@@ -1,0 +1,196 @@
+
+
+         /***********************************************\
+         |**                                           **|
+         |**   DSP56200 CHIP DRIVER -ADAPTIVE FILTER   **|
+         |**                        -POLLED I/O        **|
+         |**                                           **|
+         \***********************************************/
+
+
+
+/************************************************************************\
+*                                                                        *
+*   This file contains a flowchart of the host processor program used    *
+*   to setup and service the DSP56200 as a real-time adaptive filter.    *
+*   In this example, the host processor polls a general purpose input    *
+*   pin to determine the beginning of a new sample period, signified     *
+*   by the reception of a rising edge on the DSP56200's START pin. The   *
+*   general purpose input pin is tied directly to the START pin of the   *
+*   DSP56200.                                                            *
+*                                                                        *
+*                                                                        *
+*   The example system is configured as shown below:                     *
+*                                                                        *
+*                                                                        *
+*                               ------------                             *
+*                               | DSP56200 |                             *
+*                               ------------                             *
+*                                     ^                                  *
+*                                     |                                  *
+*                                     v                                  *
+*                  -------    ------------------                         *
+*          d(t) -->| A/D |--->| Host Processor |                         *
+*                  -------    |                |    -------              *
+*                             | (contains code |--->| D/A |--> out(t)    *
+*                  -------    |  found in this |    -------              *
+*         x1(t) -->| A/D |--->|     file)      |                         *
+*                  -------    ------------------                         *
+*                                                                        *
+*                                                                        *
+*                    Figure 1. Adaptive Filtering System                 *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*   There is only one DSP56200 in this example (i.e., not multiple       *
+*   DSP56200s in cascade), and it is configured as an adaptive filter    *
+*   (see Figure 2) by writing the DSP56200's Configuration register.     *
+*   Since only 16 bits of the result  are sent to the D/A Converter,     *
+*   the output is rounded to a 16 bit result by the DSP56200.            * 
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*         d(n) -------------------------------                           *
+*                                          - |                           *
+*                                            v                           *
+*                    --------------     +   ---                          *
+*        x1(n) ----->|    FIR     |------->| + |-----> out(n)            *
+*                    |  Structure |         ---           = -1 * error   *
+*                    --------------          |                           *
+*                          ^                 |                           *
+*                          |                 |                           *
+*                          -------------------                           *
+*                                                                        *
+*                                                                        *
+*                   Figure 2. DSP56200 Configuration                     *
+*                                                                        *
+*                                                                        *
+\************************************************************************/
+
+
+
+Flowchart #2: Adaptive Filter Mode, Single Chip - Polled I/O
+
+   Main Program:
+
+
+
+                             -----------
+                             |  Begin  |
+                             -----------
+                                  |
+                                  +<---------
+                                  |          |
+                             -----------   No|
+                           /    START    \___
+                           \  Received ? /   
+                             -----------
+                                  | Yes
+                                  |
+                      -------------------------
+                      | Write Bank 1 Regs:    |
+                      |    CONFIG  = 99 (hex) |
+                      |    FTL     = ff (hex) |
+                      |    LEAKAGE = 00 (hex) |
+                      -------------------------
+                                  |              
+                       ------------------------  
+                       | Switch to Bank 0:    |  
+                       |    CONFIG = 98 (hex) |  
+                       ------------------------  
+                                  |              
+                       ------------------------  
+                       | Write Bank 0 Regs:   |  
+                       |    K    = 0400 (hex) |  
+                       |    X1     = 0        |  
+                       |    D      = 0        |  
+                       |    COEFF  = 0        |  
+                       |    RAMADR = 0        |  
+                       ------------------------  
+                                  |
+                                  +<---------
+                                  |          |
+                             -----------   No|
+                           /    START    \___
+                           \  Received ? /   
+                             -----------
+                                  | Yes
+                                  |              
+                            ------------
+                            |  tap = 1  |
+                            ------------
+                                  |              
+                    ------------->+
+                   |              |              
+                   |          ----------   
+                   |        / tap <= FTL \_______________
+                   |        \     ?      / No            |
+                   |          ----------                 |
+                   |              | Yes                  |
+                   |              |                      |
+                   |   ------------------------          |
+                   |   | Clear 1 Coefficient: |          |
+                   |   |    COEFF  = 0        |          |
+                   |   ------------------------          |
+                   |              |                      |
+                   |              +<---------            |
+                   |              |          |           |
+                   |         -----------   No|           V
+                   |       /    START    \___            |
+                   |       \  Received ? /               |
+                   |         -----------                 |
+                   |              | Yes                  |
+                   |              |                      |
+                   |       ---------------               |
+                   |       | tap = tap+1 |               |
+                   |       ---------------               |
+                   |              |                      |
+                   |              |                      |
+                    --------------                       |
+                                                         |
+                                                         |
+                                   ----------------------
+                                  |
+                                  |
+                       ------------------------  
+                       | Enable Updates:      |
+                       |    CONFIG = 90 (hex) |  
+                       ------------------------  
+                                  |              
+                                  |              
+             -------------------->+<---------
+            |                     |          |
+            |                -----------   No|
+            |              /    START    \___ 
+            |              \  Received ? /    
+            |                -----------  
+            |                     | Yes    
+            |                     |         
+            |           ---------------------
+            |           | Get 2 New Samples |
+            |           |   From the A/Ds   |
+            |           ---------------------
+            |                     |            
+            |         -------------------------
+            |         | Write the New Samples |
+            |         | to the X1 and D Regs  |
+            |         -------------------------
+            |                     |          
+            |        ----------------------------
+            |        |   Read the Error Term    |
+            |        | From the OUTPUT Register |
+            |        ----------------------------
+            |                     |
+            |           -----------------------
+            |           | Send the Error Term |
+            |           |     to the D/A      |
+            |           -----------------------
+            |                     |
+            |                     |
+             ---------------------
+                (infinite loop)
+
+
+
+

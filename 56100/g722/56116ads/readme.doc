@@ -1,0 +1,117 @@
+ADM56116 SELF TEST README FILE
+
+Date last modified:  05-30-90
+
+Author:  Michael A. Renish
+
+Subject:  This readme file explains the result of the self test
+program that resides on the ADM56116.
+
+Revision:  00
+
+This readme file will explain the fte000.asm, dated 05-30-90
+source that is on this disk.  This asm file was assembled via the
+56116 assembler and then through srec.  The resulting eproms now
+reside on the adm56116.  
+
+The fte000 program is a selftest program that resides at e000. 
+Therefore, when powering up in mode 2, this program is executed. 
+There are 9 addresses that are of importance when executing this
+program.  These addresses simply loop on themselves and signify
+either a pass or failure.  Eight of these addresses relate to BAD
+addresses and 1 GOOD addresses.  The following list details these
+locations.
+
+1.  p:e032     Bad address indicating test 11 failed.
+2.  p:e064     Bad address indicating test 12 failed.
+3.  p:e09e     Bad address indicating test 13 failed.
+4.  p:e0d2     Bad address indicating test 21 failed.
+5.  p:e104     Bad address indicating test 22 failed.
+6.  p:e13e     Bad address indicating test 23 failed.
+7.  p:e184     Bad address indicating test 31 or 32 failed.
+8.  p:e1d9     Bad address indicating test 33 or 34 failed.
+
+9.  p:e1d7     GOOD ADDRESS - ALL TESTS PASS !!!!
+
+Test 11 is an address test for program memory.  It places a 0 in
+location 400, 1 in location 401, 2 in location 402, etc.  The
+reason for starting at address 400 is because internal programs
+are run in this area in the functional test at the factory.  This
+may change in the future to include more locations.
+
+Test 12 is a walking one test through the data bits as the
+address bus is incremented simultaneously i.e. (1 in location
+400, 2 in location 401, 4 in location 402, etc.).
+
+Test 13 is a walking zero test through the data bits as the
+address bus is incremented simultaneously i.e. (fffe in location
+400, fffd in location 401, fffb in location 402, etc.).
+
+Tests 21 - 23 are identical to the above tests except that X data
+memory is exercised and the starting location is at 0000 instead
+of 0400.
+
+NOTE:  NOTICE THAT SINCE THE ADM5616 IS FACTORY CONFIGURED IN
+       MODE 2, 2K OF EXTERNAL RAM IS OVERLAPPED WITH 2K OF
+       INTERNAL RAM.  THIS MEANS THAT THE BOTTOM 2K OF
+       EXTERNAL PROGRAM AND X DATA MEMORY ARE NOT UTILIZED.  
+
+Test 31 is a walking one test of the lower 12 bits of portb wired
+to portc.  The schematic for this loopback connector is shown
+below.
+
+Test 32 is a walking one test of the upper 3 bits of portb wired
+to portb.  The schematic for this loopback connector is shown
+below.
+
+Test 33 is a walking zero test of the lower 12 bits of portb
+wired to portc.  The schematic for this loopback connector is
+shown below.
+
+Test 34 is a walking zero test of the upper 3 bits of portb wired
+to portb.  The schematic for this loopback connector is shown
+below.
+
+NOTE:  TESTS 31 - 34 REQUIRE THE INSTALLATION OF THE LOOPBACK
+       CONNECTOR, WHOSE SCHEMATIC IS SHOWN BELOW, TO ENSURE
+       PROPER OPERATION OF TESTS 31 - 34.  THESE TESTS WILL
+       UNDOUBTEDLY FAIL WITHOUT THIS CONNECTOR INSTALLED INTO
+       EITHER LOCATION J1 OR J2.  THE FOLLOWING SCHEMATIC IS
+       PROVIDED TO BUILD SUCH A CONNECTOR.
+
+PB0 ---------- PC0 ------+
+PB1 ---------- PC1 ----- | ----+
+PB2 ---------- PC2 ----- | --- | ----+
+PB3 ---------- PC3       |     |     |
+PB4 ---------- PC4       |     |     |
+PB5 ---------- PC5       |     |     |
+PB6 ---------- PC6       |     |     |
+PB7 ---------- PC7       |     |     |
+PB8 ---------- PC8       |     |     |
+PB9 ---------- PC9       |     |     |
+PB10 --------- PC10      |     |     |
+PB11 --------- PC11      |     |     |
+PB12 --------------------+     |     |
+PB13 --------------------------+     |
+PB14 --------------------------------+
+
+     LOOPBACK CONNECTOR FOR PORTB / PORTC.
+
+The procedure for running the self test is as follows.
+
+1.  GO E000
+2.  FORCE BREAK
+3.  DISPLAY ON P:40..41 P:50..5F
+4.  DISPLAY
+
+Look at the PC address to find out what address the selftest is
+looping on.  Compare that value with the table above to find out
+what test(s) are failing.  The address location of P:40 should
+have a 1 (this indicates that indeed a failure did occur).  The
+address location of P:41 will give the actual test number that
+failed.  The address locations of P:50..5F is an error pad that
+indicates the ADDRESS of the failure, what the test EXPECTED, and
+what was the ACTUAL value read.  With this information a
+debugging scenario is formulated.
+
+

@@ -1,0 +1,193 @@
+
+
+         /***********************************************\
+         |**                                           **|
+         |**   DSP56200 CHIP DRIVER -ADAPTIVE FILTER   **|
+         |**                        -INTERRUPT DRIVEN  **|
+         |**                                           **|
+         \***********************************************/
+
+
+
+/************************************************************************\
+*                                                                        *
+*   This file contains a flowchart of the host processor program used    *
+*   to setup and service the DSP56200 as a real-time adaptive filter.    *
+*   In this example, the host processor is interrupted at the beginning  *
+*   of every new sample period, signified by the reception of a rising   *
+*   edge on the DSP56200's START pin.  The host processor's interrupt    *
+*   pin is tied to the START pin of the DSP56200 through an inverter.    *
+*                                                                        *
+*                                                                        *
+*   The example system is configured as shown below:                     *
+*                                                                        *
+*                                                                        *
+*                               ------------                             *
+*                               | DSP56200 |                             *
+*                               ------------                             *
+*                                     ^                                  *
+*                                     |                                  *
+*                                     v                                  *
+*                  -------    ------------------                         *
+*          d(t) -->| A/D |--->| Host Processor |                         *
+*                  -------    |                |    -------              *
+*                             | (contains code |--->| D/A |--> out(t)    *
+*                  -------    |  found in this |    -------              *
+*         x1(t) -->| A/D |--->|     file)      |                         *
+*                  -------    ------------------                         *
+*                                                                        *
+*                                                                        *
+*                    Figure 1. Adaptive Filtering System                 *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*   There is only one DSP56200 in this example (i.e., not multiple       *
+*   DSP56200s in cascade), and it is configured as an adaptive filter    *
+*   (see Figure 2) by writing the DSP56200's Configuration register.     *
+*   Since only 16 bits of the result  are sent to the D/A Converter,     *
+*   the output is rounded to a 16 bit result by the DSP56200.            * 
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*         d(n) -------------------------------                           *
+*                                          - |                           *
+*                                            v                           *
+*                    --------------     +   ---                          *
+*        x1(n) ----->|    FIR     |------->| + |-----> out(n)            *
+*                    |  Structure |         ---           = -1 * error   *
+*                    --------------          |                           *
+*                          ^                 |                           *
+*                          |                 |                           *
+*                          -------------------                           *
+*                                                                        *
+*                                                                        *
+*                   Figure 2. DSP56200 Configuration                     *
+*                                                                        *
+*                                                                        *
+\************************************************************************/
+
+
+
+Flowchart #1: Adaptive Filter Mode, Single Chip - Interrupt Driven
+
+   Main Program:
+
+
+
+                             -----------
+                             |  Begin  |
+                             -----------
+                                  |
+                     -----------------------------
+                     |  Disable START Interrupt  |
+                     -----------------------------
+                                  |
+                     -----------------------------
+                     | Set-up Global Variables:  |
+                     |       passnum = 3         |
+                     |       tap     = 0         |
+                     -----------------------------
+                                  |
+                      ----------------------------
+                      |  Enable START Interrupt  |
+                      ----------------------------
+                                  |
+               -----------------------------------------
+               | Perform Other Tasks or Idle:          |
+               |    At this time, the host can perform |
+               |    some other task.  Upon receiving   |
+               |    a START interrupt, the interrupt   |
+               |    service routine is then called.    |
+               -----------------------------------------
+
+
+
+   Interrupt Service Routine:
+
+
+
+              -----------
+              |  Begin  |
+              -----------
+                   |
+      ---------------------------
+      |  Save Processor Status  |
+      ---------------------------
+                   |
+            --------------                --------------           
+          /  passnum = 3 ? \____________/  passnum = 2 ? \____________ 
+          \                / No         \                / No         |
+            --------------                --------------              |
+                   | Yes                         | Yes                |
+        -------------------------         ----------------            |
+        | Write Bank 1 Regs:    |         |  tap = tap+1 |            |
+        |    CONFIG  = 99 (hex) |         ----------------            |
+        |    FTL     = ff (hex) |                |                    |
+        |    LEAKAGE = 00 (hex) |          -------------              |
+        -------------------------          |   Write   |              |
+                   |                       | COEFF = 0 |              |
+        ------------------------           -------------              |
+        | Switch to Bank 0:    |                 |                    |
+        |    CONFIG = 98 (hex) |             ---------                |
+        ------------------------           /    tap    \_____         |
+                   |                       \  = FTL ?  / No  |        |
+        ------------------------             ---------       |        |
+        | Write Bank 0 Regs:   |                 | Yes       |        V
+        |    K    = 0400 (hex) |                 |           |        |
+        |    X1     = 0        |          ----------------   |        |
+        |    D      = 0        |          | passnum =    |   |        |
+        |    COEFF  = 0        |          |    passnum-1 |   |        |
+        |    RAMADR = 0        |          ----------------   |        |
+        ------------------------                 |           |        |
+                   |                             |           |        |
+           ----------------                      |           |        |
+           | passnum =    |                      +<----------         |
+           |    passnum-1 |                      |                    |
+           ----------------                      |                    |
+                   |                             |                    |
+        -----------+<----------------------------                     |
+       |                                                              |
+       |                                                              |
+       |                                                    ----------
+       |                                                   |
+       |                                                   |
+       |                                            --------------  
+       |                     _____________________/  passnum = 1 ? \
+       |                    |                  No \                /
+       |                    |                       --------------  
+       |                    |                              | Yes    
+       |          ---------------------         ------------------------
+       |          | Get 2 New Samples |         | Enable Updates:      |
+       |          |   From the A/Ds   |         |    CONFIG = 90 (hex) |
+       |          ---------------------         ------------------------
+       |                    |                              |
+       |      -----------------------------         ----------------
+       V      |   Write the New Samples   |         | passnum =    |
+       |      | to the X1 and D Registers |         |    passnum-1 |
+       |      -----------------------------         ----------------
+       |                    |                              |
+       |       ----------------------------                |
+       |       |   Read the Error Term    |                |
+       |       | From the OUTPUT Register |                |
+       |       ----------------------------                |
+       |                    |                              V
+       |          -----------------------                  |
+       |          | Send the Error Term |                  |
+       |          |     to the D/A      |                  |
+       |          -----------------------                  |
+       |                    |                              |
+        ------------------->+<-----------------------------
+                            |
+                            |
+              ------------------------------
+              |  Restore Processor Status  |
+              ------------------------------
+                            |
+              ------------------------------
+              |  Return to Calling Program |
+              ------------------------------
+
+
+
+

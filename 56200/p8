@@ -1,0 +1,180 @@
+
+
+         /***********************************************\
+         |**                                           **|
+         |**   DSP56200 CHIP DRIVER -DUAL FIR FILTERS  **|
+         |**                        -POLLED I/O        **|
+         |**                                           **|
+         \***********************************************/
+
+
+
+/************************************************************************\
+*                                                                        *
+*   This file contains a flowchart of the host processor program used    *
+*   to setup and service a single DSP56200 as two real-time FIR filters. *
+*   In this example, the host processor polls a general purpose input    *
+*   pin to determine the beginning of a new sample period, signified     *
+*   by the reception of a rising edge on the DSP56200's START pin. The   *
+*   general purpose input pin is tied directly to the START pin of the   *
+*   DSP56200.                                                            *
+*                                                                        *
+*                                                                        *
+*   The example system is configured as shown below:                     *
+*                                                                        *
+*                                                                        *
+*                            ------------                                *
+*                            | DSP56200 |                                *
+*                            ------------                                *
+*                                  ^                                     *
+*                                  |                                     *
+*                                  v                                     *
+*               -------    ------------------    -------                 *
+*      x1(t) -->| A/D |--->| Host Processor |--->| D/A |--> out1(t)      *
+*               -------    |                |    -------                 *
+*                          | (contains code |                            *
+*               -------    |  found in this |    -------                 *
+*      x2(t) -->| A/D |--->|     file)      |--->| D/A |--> out2(t)      *
+*               -------    ------------------    -------                 *
+*                                                                        *
+*                                                                        *
+*                   Figure 1. Dual FIR Filtering System                  *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*   There is only one DSP56200 in this example (i.e., not multiple       *
+*   DSP56200s in cascade), and it is configured in the Dual FIR Filter   *
+*   mode (Figure 2) by writing the DSP56200's Configuration register.    *
+*   Since only 16 bit  results  are sent to each D/A Converter, the      *
+*   outputs are rounded to 16 bits by the DSP56200.                      * 
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*                           --------------                               *
+*                           |  1st  FIR  |                               *
+*               x1(n) ----->|   Filter   |-----> out1(n)                 *
+*                           |  (7 taps)  |                               *
+*                           --------------                               *
+*                                                                        *
+*                           --------------                               *
+*                           |  2nd  FIR  |                               *
+*               x2(n) ----->|   Filter   |-----> out2(n)                 *
+*                           |  (7 taps)  |                               *
+*                           --------------                               *
+*                                                                        *
+*                   Figure 2. DSP56200 Configuration                     *
+*                                                                        *
+*                                                                        *
+\************************************************************************/
+
+
+
+Flowchart #4: Dual FIR Filter Mode, Single Chip - Polled I/O
+
+   Main Program:
+
+
+                             -----------
+                             |  Begin  |
+                             -----------
+                                  |
+                                  +<---------
+                                  |          |
+                             -----------   No|
+                           /    START    \___
+                           \  Received ? /   
+                             -----------
+                                  | Yes
+                                  |
+                      ------------------------- 
+                      | Write Bank 1 Regs:    | 
+                      |    CONFIG  = 51 (hex) | 
+                      |    FTL     = 06 (hex) | 
+                      ------------------------- 
+                                  |              
+                                  |              
+                       ------------------------  
+                       | Switch to Bank 0:    |  
+                       |    CONFIG = 50 (hex) |  
+                       ------------------------  
+                                  |              
+                        ----------------------  
+                        | Write Bank 0 Regs: |  
+                        |    X1     = 0      |  
+                        |    X2     = 0      |  
+                        |    COEFF  = ROM[0] |  
+                        |    RAMADR = 0      |  
+                        ----------------------  
+                                  |              
+                            ------------
+                            |  tap = 1  |
+                            ------------
+                                  |              
+                    ------------->+
+                   |              |              
+                   |      -----------------
+                   |    /  tap <= (1+2*FTL) \____________
+                   |    \         ?         / No         |
+                   |      -----------------              |
+                   |              | Yes                  |
+                   |              |                      |
+                   |              +<---------            |
+                   |              |          |           |
+                   |         -----------   No|           V
+                   |       /    START    \___            |
+                   |       \  Received ? /               |
+                   |         -----------                 |
+                   |              | Yes                  |
+                   |              |                      |
+                   |   ------------------------          |
+                   |   | Write Bank 0 Regs:   |          |
+                   |   |    COEFF  = ROM[tap] |          |
+                   |   ------------------------          |
+                   |              |                      |
+                   |       ---------------               |
+                   |       | tap = tap+1 |               |
+                   |       ---------------               |
+                   |              |                      |
+                   |              |                      |
+                    --------------                       |
+                                                         |
+                                                         |
+                                   ----------------------
+                                  |
+                                  |
+             -------------------->+<---------
+            |                     |          |
+            |                -----------   No|
+            |              /    START    \___ 
+            |              \  Received ? /    
+            |                -----------  
+            |                     | Yes    
+            |                     |         
+            |           ---------------------
+            |           | Get 2 New Samples |
+            |           |   From the A/Ds   |
+            |           ---------------------
+            |                     |            
+            |         -------------------------
+            |         | Write the New Samples |
+            |         | to the X1 and X2 Regs |
+            |         -------------------------
+            |                     |          
+            |          ------------------------
+            |          |   Read Two Results   |
+            |          | from the OUTPUT Reg. |
+            |          ------------------------
+            |                     |         
+            |            --------------------
+            |            | Send the Results |
+            |            |    to the D/As   |
+            |            --------------------
+            |                     |
+            |                     |
+             ---------------------
+                (infinite loop)
+
+
+
+

@@ -1,0 +1,1138 @@
+========================================================================
+                                              Program        Program
+         Benchmark                             Length         Length
+                                              in Icyc        in Words
+
+B.2.1    Real Multiply                              3           3
+B.2.2    N Real Multiplies                         2N          11
+B.2.3    Real Update                                4           4
+B.2.4    N Real Updates                            3N          14
+B.2.5    N Term Real Convolution (FIR)             1N           9
+B.2.6    N Term Real*Complex Convolution           2N          15
+B.2.7    Complex Multiply                           6           6
+B.2.8    N Complex Multiplies                      4N          14
+B.2.9    Complex Update                             7           7
+B.2.10   N Complex Updates                         6N          18
+B.2.11   N Term Complex Convolution (FIR)          4N          14
+B.2.12   Nth Order Power Series                    1N          13
+B.2.13   2nd Order Real Biquad Filter              12          12
+B.2.14   N Cascaded 2nd Order Biquads              5N          23
+B.2.15   N Radix 2 FFT Butterflies                10N          13
+B.2.16   Adaptive LMS FIR                       2N+19          22
+B.2.17   FIr Lattice Filter                      4N+7          10
+B.2.18   All Pole Iir Lattice Filter            3N+11          14
+B.2.19   General Lattice Filter                 4N+12          15
+B.2.20   Normalized Lattice Filter              5N+11          15
+B.2.21   [1x3][3x3] Matrix Multiply                21          21
+B.2.22   [NxN][NxN] Matrix multiply            N3+7N2          25
+B.2.23   3x3 2-D FIR Kernel                        12          44
+B.2.24   Signed 16 Bit Result Divide               36          18
+B.2.25   Signed Integer Divide                     32
+B.2.26   Multiply 32/48-bit Fractions             4+8
+
+B.3.1    Wave Generation Double Integration        2N          15
+B.3.2    Wave Generation 2nd Order Oscillator      4N          16
+B.3.3    Cascaded Transpose BIQUAD Cell            8N          15
+B.3.4    IIR nth Order Direct Form II Canonic      2N          11
+B.3.5    Find Index Of A Max Value In Array        3N          10
+B.3.6    PID Algorithm                              5           5
+B.3.7    Reed Solomon Main Loop                   18N          17
+B.3.8    N Double Precision Real Multiplies        9N          18
+B.3.9    Double Precision Autocorrelation          19
+========================================================================
+APPENDIX B
+DSP BENCHMARKS
+B.1  INTRODUCTION
+Appendix B consists of a set of DSP Benchmarks intended to highlight
+the DSP56100 performance in various applications, show examples of
+programming techniques, and provide code fragments for user application
+programs. Additional code will be put on the Dr. Bub Electronic Bulletin
+Board System as it becomes available. The following table lists these
+Benchmark programs and provides an overview of the program's performance.
+
+The assembly language source is organized into 5 columns as shown below.
+
+Label   Opcode  Operands    Data Bus                 Comment
+FIR     MAC     X1,X0,A     X:(R0)+,X1  X:(R3)+,X0   ;Do each tap
+
+The Label column is used for program entry points and end of loop
+indication. The Opcode column indicates the Data ALU, Address ALU or
+Program Controller operation to be performed. The Operands column
+specifies the operands to be used by the opcode. The Data Bus specifies
+an optional data transfer over the Data Bus and the addressing mode to
+be used. The Comment column is used for documentation purposes and does
+not affect the assembled code. The Opcode column must always be included
+in the source code. For each benchmark, the number of program words and
+instruction cycles are given.
+
+The following equates are used in the benchmark programs.
+
+            page      132
+            opt       cc
+;define  section
+AD          EQU       0
+BD          EQU       $100
+bd          EQU       $100
+C           EQU       $200
+c           EQU       $200
+D           EQU       $300
+N           EQU       100
+AR          EQU       $300
+AI          EQU       $400
+OUTPUT      EQU       $500
+output      EQU       $FFF1
+INPUT       EQU       $501
+input       EQU       $FFF1
+W           EQU       0
+w           EQU       0
+H           EQU       0
+XM          EQU       0
+state       equ       0
+ntaps       equ       $10
+k           equ       0
+n           equ       32
+p           equ       10
+mask        equ       10
+image       equ       $40
+dividend    equ       .25
+divisor     equ       .5
+paddr       equ       0
+qaddr       equ       4
+w1          equ       0
+w2          equ       10
+s           equ       0
+tablebase   equ       0
+lpc         equ       8
+frame       equ       0
+cor         equ       $100
+shift       equ       $80       ;shift constant
+table       equ       $180      ;base address of a-law table
+            org       p:$40
+
+B.2 FIRST SET OF BENCHMARKS
+========================================================================
+B.2.1   Real Multiply
+;c = a * b
+
+        move            x:(r0)+n0,x1    x:(r3)+n3,x0
+        mpyr    x1,x0,a
+        move            a,x:(r1)
+
+========================================================================
+B.2.2   N Real Multiplies
+;c(I) = a(I) * b(I), I=1,...,N
+
+        move    #AD,r0
+        move    #BD,r3
+        move    #C,r2
+        move              x:(r0)+,y0  x:(r3)+,x0
+        do      #N,END_DO2
+        mpyr    y0,x0,a   x:(r0)+,y0  x:(r3)+,x0
+        move    a,x:(r2)+
+END_DO2
+
+========================================================================
+B.2.3   Real Update
+;d = c + a * b
+
+        move              x:(r0)+n0,x1  x:(r3)+n3,x0
+        move              x:(r2),a
+        macr    x1,x0,a
+        move              a,x:(r1)
+
+========================================================================
+B.2.4   N Real Updates
+;d(I) = c(I) + a(I) * b(I), I=1,...,N
+
+        move    #AD,r0
+        move    #BD,r3
+        move    #C,r2
+        move    #D,r1
+        move              x:(r0)+,y0  x:(r3)+,x0
+        do      #N,END_DO4
+        move              x:(r2)+,a
+        macr    y0,x0,a   x:(r0)+,y0  x:(r3)+,x0
+        move              a,x:(r1)+
+END_DO4
+
+========================================================================
+B.2.5   Real Correlation Or Convolution (FIR Filter) 
+;c(n) = SUM(I=0,...,N-1) {a(I) * b(n-I)} 
+
+        move    #AD,r0
+        move    #BD,r3
+        clr     a         x:(r0)+,y0
+        move              x:(r3)+,x0
+        rep     #N
+        mac     y0,x0,a   x:(r0)+,y0  x:(r3)+,x0
+        rnd     a
+
+========================================================================
+B.2.6   Real * Complex Correlation Or Convolution (FIR Filter)
+;cr(n) + jci(n) = SUM(I=0,...,N-1) {(ar(I) + jai(I)) * b(n-I)} 
+;cr(n) = SUM(I=0,...,N-1) {ar(I) * b(n-I)}
+;ci(n) = SUM(I=0,...,N-1) {ai(I) * b(n-I)}
+
+        move    #AR,r0
+        move    #AI,r1
+        move    #BD,r3
+        clr     a         x:(r0)+,x1
+        clr     b         x:(r1)+,y1
+        move              x:(r3)+,x0
+        do      #N,END_DO6
+        mac     x0,x1,a   x:(r0)+,x1
+        mac     x0,y1,b   x:(r1)+,y1  x:(r3)+,x0
+END_DO6
+        rnd     a
+        rnd     b
+
+========================================================================
+B.2.7   Complex Multiply
+
+        move              x:(r0)+,y1  x:(r3)+,x1    ;ar br
+        mpy     y1,x1,a   x:(r0)+,y0  x:(r3)+,x0    ;ar*br, ai, bi
+        macr   -y0,x0,a                             ;ar*br-ai*bi
+        mpy     y1,x0,b   a,x:(r2)+                 ;ar*bi
+        macr    y1,x0,b                             ;ar*bi+ai*br
+        move              b,x:(r2)+
+
+========================================================================
+B.2.8   N Complex Multiplies
+;   cr(I) + jci(I) = (ar(I) + jai(I)) * (br(I) + jbi(I)), I=1,...,N
+;   cr(I) = ar(I) * br(I) - ai(I) * bi(I)            y1=ar    x1=br
+;   ci(I) = ar(I) * bi(I) + ai(I) * br(I)            y0=ai    x0=bi
+
+        move    #AD,r0
+        move    #C-1,r2
+        move    #BD,r3
+        move              x:(r2),b                  ;dummy move!
+        move              x:(r0)+,y1  x:(r3)+,x1    ;ar;br
+        do      #N,END_DO8
+        mpy     y1,x1,a   x:(r0)+,y0  x:(r3)+,x0    ;ar*br, ai, bi
+        macr   -y0,x0,a   b,x:(r2)+                 ;ar*br-ai*bi
+        mpy     y0,x1,b   a,x:(r2)+                 ;ai*br
+        macr    y1,x0,b   x:(r0)+,y1  x:(r3)+,x1    ;ar*bi+ai*br, ar
+END_DO8
+        move              b,x:(r2)+
+
+========================================================================
+B.2.9   Complex Update
+
+        move              x:(r2)+,a                  ;cr
+        move              x:(r0)+,y1  x:(r3)+,x1
+        mac     y1,x1,a   x:(r0)+,y0  x:(r3)+,x0     ;cr+ar*br,ai,bi
+        macr   -y0,x0,a   x:(r2)+,b                  ;cr+ar*br ai*bi
+        mac     y1,x0,b   a,x:(r1)+                  ;ci+ar*bi
+        macr    y0,x1,b                              ;ci+ar*bi+ai*br
+        move              b,x:(r1)+
+
+========================================================================
+B.2.10  N Complex Updates
+
+        move    #AD,r0
+        move    #BD,r3
+        move    #D-1,r1
+        move    #C,r2
+        move              x:(r1),b                  ;dummy in B
+        move              x:(r0)+,y1                ;ar
+        do      #N,END_DOA
+        move              x:(r2)+,a   x:(r3)+,x0    ;cr,br
+        mac     y1,x0,a   x:(r0)+,y0  x:(r3)+,x1    ;cr+ar*br, ai, bi
+        macr   -y0,x1,a   b,x:(r1)+                 ;cr+ar*br ai*bi
+        move              x:(r2)+,b                 ;ci
+        mpy     y1,x1,b   a,x:(r1)+                 ;ci+ar*bi, dr
+        macr    y0,x0,b   x:(r0)+,y1                ;ci+ar*bi+ai*br
+END_DOA
+        move              b,x:(r1)+
+
+========================================================================
+B.2.11  Complex Correlation Or Convolution (Complex FIR)
+;   cr(n) + jci(n) =
+;       SUM(I=0,...,N-1) {(ar(I) + jai(I)) * (br(n-I) + jbi(n-I))}
+;   cr(n) = SUM(I=0,...,N-1) {ar(I) * br(n-I) - ai(I) * bi(n-I)}
+;   ci(n) = SUM(I=0,...,N-1) {ar(I) * bi(n-I) + ai(I) * br(n-I)}
+;       y1=ar  x1=br
+;       y0=ai  x0=bi
+
+        move    #AD,r0
+        move    #BD,r3
+        clr     a         x:(r0)+,y1                ;ar
+        clr     b         x:(r3)+,x1                ;br
+        do      #N,END_DOB
+        mac     y1,x1,a   x:(r0)+,y0  x:(r3)+,x0    ;ar*br, ai, bi
+        mac     y1,x0,b                             ;ar*bi
+        mac     y0,x1,b   x:(r0)+,y1  x:(r3)+,x1    ;ar*bi+ai*br, ar
+        mac    -y0,x0,a                             ;ar*br-ai*bi
+END_DOB
+        rnd     a
+        rnd     b
+
+========================================================================
+B.2.12  Nth Order Power Series (Real)
+;   c = SUM(I=0,...,N) {a(I) * b**I}
+;     = [[[a(n) *b+a(n-1)] *b+a(n-2)]*b+a(n-3)]...
+
+        move    #BD,r1
+        move    #AD,r0
+        move              x:(r1),y0                ;b
+        move              y0,x0
+        move              x:(r0)+,a                ;a(n)
+        move              x:(r0)+,b                ;a(n-1)
+        do      #N/2,END_DOC
+        mac     a1,y0,b   x:(r0)+,a                ;a(n-2)
+        mac     b1,x0,a   x:(r0)+,b                ;a(0)+a(1)*b
+END_DOC
+        rnd     a
+
+========================================================================
+B.2.13  2nd Order Real Biquad IIR Filter
+;   w(n)/2 = x(n)/2 - (a1/2) * w(n-1) - (a2/2) * w(n-2)
+;   y(n)/2 = w(n)/2 + (b1/2) * w(n-1) + (b2/2) * w(n-2)
+
+;   DHigh Memory Order - w(n-2), w(n-1)
+;   DLow Memory Order - (a2/2), (a1/2), (b2/2), (b1/2)
+
+;   this version uses two pointers
+
+        move    #-1,n0
+        ori     #$08,mr
+        rnd     a         x:(r3)+,x1                  ;x1=a2/2
+        move              x:(r0)+,x0                  ;x0=wn-2
+        mac     y1,x0,a   x:(r0)+n0,y1  x:(r3)+,x1    ;y1=wn-1
+        mac     y1,x1,a   x1,x:(r0)+                  ;a=wn
+        move              x:(r3)+,x1                  ;x1=b2/2
+        mac     x1,x0,a   a,x:(r0)+
+        move              x:(r3)+,x1                  ;x1=b1/2
+        macr    y1,x1,a
+
+        move              a,x:<<output
+
+========================================================================
+B.2.14  N Cascaded Real Biquad IIR Filters
+
+;   w(n)/2 = x(n)/2 - (a1/2) * w(n-1) - (a2/2) * w(n-2)
+;   y(n)/2 = w(n)/2 + (b1/2) * w(n-1) + (b2/2) * w(n-2)
+
+;   D High Memory Order - w(n-2)1,w(n-1)1,w(n-2)2,w(n-1)2,...
+;   D Low Memory Order - (a2/2)1,(a1/2)1,(b2/2)1,(b1/2)1,(a2/2)2,...
+
+;   this version uses two pointers
+
+        ori     #$08,mr
+        move    #W,r0
+        move    #C,r3
+        move    #-1,n0
+        movep             x:<<input,a
+        rnd     a         x:(r3)+,x1                  ;x1=a2/2
+        move              x:(r0)+,y0                  ;y0=wn-2
+        do      #N,END_DOE
+        mac     y0,x1,a   x:(r0)+n0,y1  x:(r3)+,x1    ;y1=wn-1
+        macr    y1,x1,a   x1,x:(r0)+
+        move              x:(r3)+,x1                  ;x1= b2/2
+        mac     y0,x1,a   a,x:(r0)+
+        move              x:(r3)+,x1                  ;x1=b1/2
+        mac     y1,x1,a   x:(r0)+,y0    x:(r3)+,x1
+END_DOE
+
+;   this version uses three pointers
+
+        ori     #$08,mr
+        move    #W,r0
+        move    #C,r3
+        move    #C+2,r1
+        move    #2,n3
+        move    #4,n1
+        move    #-1,n0
+        movep             x:<<input,a                   ;a=x 
+        move              x:(r0)+,y0    x:(r3)+,x0      ;y0=w-2
+        do      #N,END_DOF
+        mac     y0,x0,a   x:(r0)+n0,y1  x:(r3)+n3,x0    ;w-1;a1/2
+        macr    y1,x0,a   y1,x:(r0)+                    ;a=w
+        move              x:(r1)+n1,x0  x:(r3)+,x1      ;x0=b2/2
+        mac     y0,x0,a   a,x:(r0)+                     ;a=w+b2/2w-2
+        mac     y1,x1,a   x:(r0)+,y0    x:(r3)+,x0      ;a=y; next w-2
+END_DOF
+
+========================================================================
+B.2.15  N Radix 2 FFT Butterflies
+;   Decimation in time (DIT), in-place algorithm
+
+;   Twiddle Factor Wk= wr - jwi = cos(2pk/N) -j sin(2pk/N) pointed by r1
+;      which must be saved on each pass. 
+
+;   xr = ar + wr * br - wi * bi
+;   xi = ai + wi * br + wr * bi
+;   yr = ar - wr * br + wi * bi = 2 * ar - xr
+;   yi  = ai - wi * br -  wr * bi = 2 * ai - xi
+
+        move              x:(r1)+,y0  x:(r3)+,x1   ;y0=wr; x1=br
+        move              x:(r0),b                 ;b=ar
+        move              x:(r1)+n1,y1             ;y1=wi
+
+;   save r1, update r1 to point last bi/yi
+
+        do      #n,end_bfly
+        mac     y0,x1,b   x:(r3)+,x0               ;b=ar+wrbr
+        macr    y1,x0,b   a,x:(r1)+                ;b=xr
+        move              x:(r0)+,a                ;a=ar
+        subl    b,a       b,x:(r2)+                ;a=2ar-xr=yr
+        move              x:(r0),b
+        move              a,x:(r1)+                ;b=ai
+        mac     y1,x1,b   x:(r3)+,x1               ;b=ai+wibr
+        macr    y0,x0,b   x:(r0)+,a  x:(r3)+,x0    ;b=xi;a=ai
+        subl    b,a       b,x:(r2)+                ;a=2ai-xi=yi
+        move              x:(r0),b                 ;b=ar
+end_bfly
+        move              b,x:(r1)+n1              ;save last yi
+
+;   save r1, update r1 to point last bi/yi
+
+========================================================================
+B.2.16  LMS ADAPTIVE FILTER
+
+;Notation and symbols:
+;   x(n)    - Input sample at time n.
+;   d(n)    - Desired signal at time n.
+;   y(n)    - FIR filter output at time n.
+;   H(n)    - Filter coefficient vector at time n.
+;                  H={c0,c1,c2,...,ck,...,c(N-1)}
+;   X(n)    - Filter state variable vector at time N.
+;                  X={x(n),x(n-1),....,x(n-N+1)}
+;   Mu      - Adaptation gain.
+;   N       - Number of coefficient taps in the filter. 
+;   True LMS Algorithm       Delayed LMS Algorithm
+;   Get input sample         Get input sample
+;   Save input sample        Save input sample
+;   Do FIR                   Do FIR
+;   Get d(n), find e(n)      Update coefficients
+;   Update coefficients      Get d(n), find e(n)
+;   Output y(n)              Output y(n)
+;   Shift vector X           Shift vector X
+
+;   System equations:
+;   e(n)=d(n)-H(n)X(n)       e(n)=d(n)-H(n)X(n)         (FIR filter and error)
+;   H(n+1)=H(n)+uX(n)e(n)    H(n+1)=H(n)+uX(n-1)e(n-1)  (Coefficient update)
+
+;References:
+
+;"Adaptive Digital Filters and Signal Analysis", Maurice G. Bellanger,
+; Marcel Deker Inc. New York and Basel
+
+;"The DLMS Algorithm Suitable for the Pipelined Realization of Adaptive
+; Filters", Proc. IEEE ASSP Workshop, Academia Sinica, Beijing, 1986
+
+;Note:
+;The sections of code shown describe how to initialize all registers,
+;filter an input sample and do the coefficient update. Only the instruc-
+;tions relating to the filtering and coefficient update are shown as
+;part of the benchmark. Instructions executed only once (for initial-
+;ization) or instructions that may be user application dependent are not
+;included in the benchmark.
+
+========================================================================
+;Implementation of the true LMS on the DSP56100
+
+        move    #XM,r0                         ;start of X
+        move    #N-1,m0                        ;mod 4
+        move    #-2,n0                         ;adjustment for filtering
+        move    m0,m2                          ;mod N
+        movep             x:<<input,y0              ;get input sample
+        move    #H,r3                               ;coefficients
+        clr     a         y0,x:(r0)+                ;save x(n)
+        move              x:(r3)+,x1                ;get c0
+        rep     #N-1                                ;do fir
+        mac     y0,x1,a   x:(r0)+,y0  x:(r3)+,x1
+        macr    y0,x1,a                             ;last tap
+        movep             a,x:<<output         ;output fir if desired
+
+;Get d(n), subtract fir output, multiply by "u", put the result in x0.
+;This section is application dependent.
+
+        move    #H,r3                               ;coefficients
+        move    r3,r2                               ;coefficients
+        move              x:(r0)+,y0                ;get x(n)
+        move              x:(r3)+,a                 ;a=c0
+        do      #ntaps,_coefupdate                  ;update coef.
+        macr    x0,y0,a   x:(r0)+,y0  x:(r3)+,x1
+        tfr     x1,a      a,x:(r2)+                 ;copy c, 
+_coefupdate
+        move              x:(r0)+n0,y0              ;update r0
+        move              x:(r3)-,y0                ;update r3 
+
+========================================================================
+;   Implementation of the delayed LMS on the DSP56100
+
+;   Delayed LMS algorithm with matched coefficient and data vectors
+;   Algorithm runs in 2N (2 coeffs processed in each 4 cycle loop)
+
+;   Register Usage:
+;   Data Sample is stored in Y0 and Y1.
+;   Coefficient is stored in X1
+;   Loop Gain * Error is stored in X0.
+;   FIR operation done in B.
+;   Coeff update operation done in A.
+
+;      FIR sum = a = a +c(k)old*x(n-k)
+;      c(k)new=  b = c(k)old -mu*eold *x(n-k-1)
+
+        move    #state,r0
+        move    #ntaps,m0
+        move    #-2,n0
+        move    #1,n1
+        move    #c+1,r3
+        move    #c,r1
+
+        clr     b         x:(r0)+,y0                ;y0 = x(n)
+        move              x:(r0)+,y1   x:(r3)+,x1   ;y1=x(n-1)
+
+        do      #ntaps/2,end_lms
+        mac     y0,x1,b   a,x:(r1)+n1  x1,a
+        macr    x0,y1,a   x:(r0)+,y0   x:(r3)+,x1
+        mac     x1,y1,b   a,x:(r1)+n1  x1,a
+        macr    y0,x0,a   x:(r0)+,y1   x:(r3)+,x1
+end_lms
+        move              a,x:(r1)+
+        move              (r0)+n0
+
+========================================================================
+;   Implementation of the double precision true LMS on the DSP56100
+;   Memory map:
+
+        move	#XM,r0                      ;start of X
+        move 	#N-1,m0                     ;mod 4
+        move	#-2,n0                      ;adjustment for filtering
+        move	#2,n3
+        move	m0,m2                       ;mod N
+        movep             x:<<input,y0      ;get input sample
+
+        move    #H,r3                                 ;coefficients
+        clr     a         y0,x:(r0)+                  ;save x(n)
+        move              x:(r3)+n3,x1                ;get c0 
+        rep     #N-1                                  ;do fir 
+        mac     x1,y0,a   x:(r0)+,y0  x:(r3)+n3,x1    ;mac; next x
+        macr    x1,y0,a                               ;last tap
+        movep             a,x:<<output                ;output fir if desired
+
+;Get d(n), subtract fir output, multiply by "u", put the result in x0.
+;This section is application dependent.
+
+        move    #H,r3                                 ;coefficients
+        move    r3,r2                                 ;coefficients
+        move              x:(r0)+,y0                  ;get x(n)
+        move              x:(r3)+,a                   ;a1=c0h
+        move              x:(r3)+,a0                  ;a0=col
+        do      #ntaps,_coefupdat                     ;update coef.
+        mac     x0,y0,a   x:(r0)+,y0
+        move              x:(r3)+,b                   ;u e(n) x(n)+c
+        move              x:(r3)+,b0                  ;b0=next c()l
+        move              a1,x:(r2)+                  ;save next c()h
+        tfr     b,a       a0,x:(r2)+                  ;copy c
+_coefupdat
+        move              x:(r0)+n0,y0                ;update r0
+        move    (r3)-                                 ;update r3
+        move    (r3)-
+
+========================================================================
+;Implementation of the double precision delayed LMS on the DSP56100
+
+;   Delayed LMS algorithm with matched coefficient and data vectors
+;   Algorithm runs in 4N (2 coeffs processed in each 8 cycle loop)
+;   Register Usage:
+;   Data Sample is stored in Y0 and Y1.
+;   Coefficient is stored in X1
+;   Loop Gain * Error is stored in X0.
+;   FIR operation done in B.
+;   Coeff update operation done in A.
+;      FIR sum = a = a +c(k)old*x(n-k)
+;      c(k)new = b = c(k)old -mu*eold *x(n-k-1)
+
+        move    #state,r0
+        move    #ntaps,m0
+        move    #-2,n0
+        move    #1,n1
+        move    #c,r3
+        move    #c-2,r1
+
+        clr     b         x:(r0)+,y0                ;y0 = x(n)
+        move              x:(r0)+,y1  x:(r3)+,x1    ;y1= x(n-1) x1=c0h
+
+        do      #ntaps/2,end_lms2
+        mac     y0,x1,b   a,x:(r1)+n1
+        tfr     x1,a      a0,x:(r1)+n1              ;a1=ckh
+        move              x:(r3)+,a0                ;a0=ckl
+        macr    x0,y1,a   x:(r0)+,y0  x:(r3)+,x1    ;x1=c(k+1)h
+        mac     x1,y1,b   a,x:(r1)+n1
+        tfr     x1,a      a0,x:(r1)+n1
+        move              x:(r3)+,a0
+        macr    y0,x0,a   x:(r0)+,y1  x:(r3)+,x1
+end_lms2
+        move              a,x:(r1)+
+        move              a0,x:(r1)+
+        move              (r0)+n0
+
+========================================================================
+;-----------------------------------------------------------------------
+; The complete code for a true LMS that executes in two instruction
+; cycles per tap is shown below. A brief description of how the algorithm
+; is derived precedes the LMS code. Note that the coefficients stored to
+; memory are saturated (should overflow occur), whereas the coefficients
+; used in the FIR filter are not saturated. Therefore, the coefficients
+; stored to memory, and the coefficients used in the FIR filter calcula-
+; tion, are not guaranteed to be the same. This should not be a problem
+; in designs where the echo gain is guaranteed to be less than one.
+;-----------------------------------------------------------------------
+
+        opt     cc,cex
+        page    132,66
+        section FAST_LMS
+n_tap   equ     16
+        org     x:$0100
+ref_buf      dsm   n_tap    ;Ref_buf is a modulo n_tap buffer, containing
+                            ;a reference signal.
+coeff        ds    n_tap    ;Note: Coefficients are stored in reverse order
+ref_ptr      dc    ref_buf  ;data pointer for reference buffer
+scaled_error dc    0        ;scaled error sample from last call of echo_input
+norm_factor  dc    0.1      ;scale factor for error signal
+
+        org     p:0
+        jmp     Test_EC
+        org     p:$0100
+
+;-----------------------------------------------------------------------
+; The following pseudo code is for the "standard" LMS echo canceller
+; algorithm.
+;       y(n) = estimate of echo at time sample n.
+;       x(n) = reference input signal at time n.
+;       input (n) = input signal (containing echo signal) at time n.
+;       c(n,k) = k'th coefficient at time n.
+;
+;       /* initialize N coefficients at time 0 to 0 */
+;
+;       for (k = 0 to n-1) {
+;           c(0,k) = 0;
+;       }
+;
+;       /* LMS follows, do forever */
+;
+;   n = 0;
+;   do forever {
+;           y(n) = 0;
+;
+;           for (k=0 to N-1) {
+;               y(n) = y(n) + c(n,k)*x(n-k);        /* FIR filter */
+;           }
+;
+;       error(n) = input(n) - y(n);
+;
+;       for (k = 0 to N-1) {
+;           c(n+1,k) = c(n,k) + delta*error(n)*x(n-k) ; /* Coefficient Update */
+;
+;       }
+;
+;       n = n+1;
+;   }
+;-----------------------------------------------------------------------
+;-----------------------------------------------------------------------
+;   The following is equivalent to the above (i.e., given the same input
+;   signals, the error signal and coefficients will follow the exact
+;   same trajectories. Note the calculations are run from the back of
+;   the filter to the front. This saves two registers. Also note that
+;   the calculation order of the coefficient and the FIR filter has been
+;   reversed.
+;
+;   /* initialize N coefficients at time -1 to 0 */
+;
+;   for (k = 0 to N-1) {
+;       c(-1,k) = 0;
+;   }
+;
+;   error (-1) = 0          ;The initial error must be set to zero.
+;
+;   /* LMS follows, do forever */
+;
+;   n = 0;
+;   do forever {
+;
+;       y(n) = 0;
+;
+;       for (k = N-1 to 0) {
+;           c(n,k) = c(n-1,k) + delta*error(n-1)*x(n-1-k); /* Coefficient */
+;       }
+;
+;       for (k= N-1to 0) {
+;           y(n) = y(n) + c(n,k)*x(n-k);    /* FIR filter */
+;       }
+;
+;       error(n) = input(n) - y(n);
+;
+;       n = n+1;
+;
+;   }
+;-----------------------------------------------------------------------
+; Note that the two "for" loops in the do forever loop can now be combined.
+;-----------------------------------------------------------------------
+;
+;   /* initialize N coefficients at time -1 to 0 */
+;
+;   for (k = 0 to N-1) {
+;       c(-1,k) = 0;
+;   }
+;
+;   error(-1) = 0;
+;
+;   /* LMS follows, do forever */
+;
+;   n = 0;
+;   do forever {
+;
+;       y(n) = 0;
+;
+;       for (k = N-1 to 0) {
+;           c(n,k) = c(n-1,k) + delta*error(n-1)*x(n-1-k); /* Coefficient */
+;           y(n) = y(n) + c(n,k)*x(n-k);    /* FIR filter */
+;       }
+;
+;       error(n) = input(n) - y(n);
+;
+;       n = n+1;
+;
+;   }
+;-----------------------------------------------------------------------
+;-----------------------------------------------------------------------
+;
+;   Echo Canceller Routine (Fast LMS)
+;
+;   Upon Entry
+;       x1 should contain newest reference sample
+;       y1 should contain newest input sample
+;
+;   Upon Exit
+;       b will contain echo cancelled output
+;
+;   Note that the coefficients are stored in reverse time order.
+;-----------------------------------------------------------------------
+
+FAST_LMS:
+
+        move    #+1,n1
+
+        move    #n_tap-1,m0
+        move    #-1,m1
+        move    m1,m3
+
+        move    x:ref_ptr,r0    ;r0 is the get reference signal pointer
+
+        move    #coeff,r3       ;r3 is the get coefficient pointer
+        move    r3,r1           ;r1 is the put coefficient pointer
+
+        move    x:(r0),y0       ;y0 contains the oldest reference sample
+        move    x1,x:(r0)+      ;store newest reference sample in reference register
+
+        clr     b    x:(r3)+,a  ;fetch first coefficient, and clear b for FIR
+        move    x:scaled_error,x0    ;x0 is the scaled error sample
+
+        do      #n_tap,end_fir_update
+
+        macr    x0,y0,a   x:(r0)+,y0   x:(r3)+,x1
+        mac     a1,y0,b   a,x:(r1)+n1  x1,a
+end_fir_update
+
+        neg     b
+        move    r0,x:ref_ptr        ;store get reference pointer
+        add     y1,b                ;b = EC output = input - echo_estimate
+
+        move    x:norm_factor,x0
+        move    b,y0
+        mpyr    y0,x0,a
+        move    a,x:scaled_error
+
+        move    b,x:output_port
+
+        rts
+;-----------------------------------------------------------------------
+;;   Test shell follows
+;       Remote signal is an impulse train, period greater than echo span
+;       Input is the resulting echo signal
+;-----------------------------------------------------------------------
+
+        org    x:$1000
+
+output_port    ds   1        ;write output to D/A
+
+        org    x:$0400
+
+Remote_signal  dc   0.8
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+
+        org    x:$0420
+
+echo_input     dc   0.0
+               dc   0.0
+               dc   0.2
+               dc   0.4
+               dc   0.7
+               dc   0.4
+               dc   0.2
+               dc   0.1
+               dc   0.0
+               dc   -0.1
+               dc   -0.2
+               dc   -0.1
+               dc   0.0
+               dc   0.1
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+               dc   0.0
+
+remote_get     dc   remote_signal
+input_get      dc   echo_input
+
+        org    p:
+
+Test_EC
+        move    #0 ,x0
+        move    #-1,m0
+        move    #coeff,r0
+        rep     #n_tap
+        move    x0,x:(r0)+        ;zero coefficients
+
+        move    #$ffff,x0
+        do      x0,end_test_loop
+
+        move    x:remote_get,r0
+        move    #19,m0
+        move    x:input_get,r1
+        move    #19,m1
+        move    x:(r0)+,x1
+        move    x:(r1)+,y1
+        move    r0,x:remote_get
+        move    r1,x:input_get
+
+        jsr     FAST_LMS
+
+end_test_loop
+        nop
+        nop
+
+        debug
+
+        endsec
+        end
+
+========================================================================
+B.2.17  FIR Lattice Filter
+; Lattice filter benchmarks. N refers to the number of "k" coefficients
+; in the lattice filter. Some filters may have other coefficients other
+; than the "k" coefficients but their number may be determined from k.
+
+        move    #state,r0    ;point to state variable storage
+        move    #N,m0        ;N=number of k coefficients
+        move    #k,r1        ;point to k coefficients
+        move    #N-1,m1      ;mod for k's
+        move    #0,n0
+
+        movep             x:<<input,b        ;get input
+
+        move              b,x:(r0)+          ;save 1st state
+        move              x:(r1)+,x0         ;get k 
+        do      #N,end_elat
+        move              x:(r0)+n0,a   b,y0 ;get s;copy t 
+        macr    x0,y0,a   x:(r0)+n0,x1       ;t*k+s, copy s
+        macr    x1,x0,b   x:(r1)+,x0         ;s*k+t, nxt k
+        move              a,x:(r0)+          ;sv st
+end_elat
+        move              x:(r0)-,y1
+        move              x:(r1)-,x0
+        movep             b,x:<<output       ;output 
+
+========================================================================
+B.2.18  All Pole IIR Lattice Filter
+
+        move    #k+N-1,r0                      ;point to k
+        move    #N-1,m0                        ;number of k's-1
+        move    #-1,n1
+        move    n1,n3
+        movep             x:<<input,a          ;get input sample
+        move    #state,r3                      ;pt to x() 
+        move              x:(r0)-,y1           ;y1=k3
+        move              x:(r3)+,x1           ;x1=s3
+        macr   -x1,y1,a   x:(r0)+n0,y1         ;a=in-k3s3;y1=k2
+        move              x:(r3)-,x1           ;x1=s2
+        do      #n-1,endlat
+        macr   -x1,y1,a   b,x:(r3)+            ;a=a-s2k2=t2;update s3
+        move              x:(r3)+,b     a,x1            ;b=s2
+        macr    x1,y1,b   x:(r0)+n0,y1  x:(r3)+n3,x1    ;b=s2+t2k2;get s1,k1
+endlat
+        move              b,x:(r3)+            ;sv 2nd last s
+        move              x:(r0)+,y1           ;update r0 
+        move              a,x:(r3)+            ;save last s
+        movep             a,x:<<output         ;output 
+
+========================================================================
+B.2.19  General Lattice Filter
+
+        move    #k,r0                          ;point to coefficients
+        move    #2*N,m0                        ;mod 2*(# of k's)+1
+        move    #-1,n3
+        movep             x:<<input,a                 ;get input sample
+        move    #state,r3                             ;pto filter states
+        move              x:(r0)+,y1                  ;get first k
+        move              x:(r3)-,x1                  ;first s 
+        do      #N,el                                 ;do filter 
+        macr   -y1,x1,a   b,x:(r3)+                   ;t-k*s, save s 
+        move              x:(r3)+,b   a,x1            ;get s again 
+        macr    x1,y1,b   x:(r0)+,y1  x:(r3)+n3,x1    ;t'*k+s,get k& s
+el
+        move              b,x:(r3)+                   ;s 2nd to1st st 
+        clr     a         a,x:(r3)+                   ;s first state 
+        move              x:(r3)+,x1                  ;get last state
+        rep     #N                                    ;do fir taps 
+        mac     y1,x1,a   x:(r0)+,y1  x:(r3)+,x1
+        macr    y1,x1,a   x:(r3)+,x1                  ;finish, adj pter 
+        movep              a,x:<<output
+
+========================================================================
+B.2.20  Normalized Lattice Filter
+
+        move    #c,r0                             ;point to coefficients
+        move    #3*N,m0                           ;mod on coefficients
+        move    #0,n3
+        movep             x:<<input,a                 ;get input sample
+        move    #state,r3                             ;pt to state 
+        move              x:(r0)+,y1  a,x1            ;get first Q 
+        do      #n,endnlat
+        mpy     x1,y1,a   x:(r0)+,y0  x:(r3)+n3,x0    ;q*t; get k & s
+        macr   -x0,y0,a   b,x:(r3)+                   ;q*t-k*s,save s
+        mpy     y0,x1,b   a,x1                        ;k*t, set t' 
+        macr    y1,x0,b   x:(r0)+,y1                  ;k*t+q*s, get q
+endnlat
+        move              b,x:(r3)+                   ;sv scnd lst st
+        move              a,x:(r3)+                   ;save state
+        clr     a         x:(r3)+,x1                  ;clr acc
+        rep     #n                                    ;do fir taps
+        mac     x1,y1,a   x:(r0)+,y1  x:(r3)+,x1
+        macr    x1,y1,a   x:(r3)+,x1                  ;rnd, adj pter
+        movep             a,x:<<output                ;output sample
+
+========================================================================
+B.2.21  [1x3][3x3] Matrix Multiply
+
+        move    #AD,r3                              ;point to mat a
+        move    #bd,r0                              ;point to vec b
+        move    #2,m0                               ;addrb mod 3
+        move    #c,r2                               ;point to vec c
+        move              x:(r0)+,y0  x:(r3)+,x0    ;y0=a11;x0=b1
+        mpy     y0,x0,a   x:(r0)+,y0  x:(r3)+,x0    ;a11*b1
+        mac     y0,x0,a   x:(r0)+,y0  x:(r3)+,x0    ;+a12*b2
+        macr    y0,x0,a   x:(r0)+,y0  x:(r3)+,x0    ;+a13*b3
+        move              a,x:(r2)+                 ;store c1
+        mpy     y0,x0,a   x:(r0)+,y0  x:(r3)+,x0    ;a21*b1
+        mac     y0,x0,a   x:(r0)+,y0  x:(r3)+,x0    ;+a22*b2
+        macr    y0,x0,a   x:(r0)+,y0  x:(r3)+,x0    ;+a23*b3
+        move              a,x:(r2)+                 ;store c2
+        mpy     y0,x0,a   x:(r0)+,y0  x:(r3)+,x0    ;a31*b1
+        mac     y0,x0,a   x:(r0)+,y0  x:(r3)+,x0    ;+a32*b2
+        macr    y0,x0,a                             ;+a33*b3->c3
+        move              a,x:(r2)+                 ;store c3
+
+========================================================================
+B.2.22  [NxN][NxN] Matrix Multiply
+;The matrix multiplications are for square NxN matrices.
+;All the elements;are stored in "row major" format. i.e. for the array A:
+
+        move    #AD,r0            ;point to A 
+        move    #bd,r3            ;point to B
+        move    #c,r2             ;output mat C
+        move    #N,b              ;array size
+        move    b,n3
+
+        do      #N,erows                              ;do rows 
+        do      #N,ecols                              ;do columns
+        move              x1,r0                       ;copy row A
+        move    r1,r3                                 ;copy col B
+        clr     a         x:(r0)+,y0
+        move              x:(r3)+n3,x0                ;clr sum & pipe
+        rep     #N-1                                  ;sum 
+        mac     y0,x0,a   x:(r0)+,y0  x:(r3)+n3,x0
+        macr    y0,x0,a   x:(r3)+,y1                  ;finish, next col
+        move              a,x:(r2)+                   ;save output 
+ecols
+        add     x1,b                                  ;next row A 
+        move              b,x1
+        move    #bd,r1                                ;first element B 
+erows
+
+========================================================================
+B.2.23  N Point 3x3 2-D FIR Convolution
+;The two dimensional FIR uses a 3x3 coefficient mask:
+;
+;The image is an array of 512x512 pixels. To provide boundary conditions
+;for the FIR filtering, the;image is surrounded by a set of zeros such
+;that the image is actually stored as a 514x514 array. i.e
+;
+;The image (with boundary) is stored in row major storage. The first
+;element of the array image is image(1,1) followed by image(1,2). The
+;last element of the first row is image(1,514);followed by the beginning
+;of the next column image(2,1). These are stored sequentially in the
+;array; "im" in d memory.
+;
+;Image(1,1) maps to index 0, image(1,514) maps to index 513,
+;Image(2,1) maps to index 514 (row major storage).
+;
+;Although many other implementations are possible, this is a realistic
+;type of image environment;where the actual size of the image may not
+;be an exact power of 2. Other possibilities include storing a 512x512
+;image but computing only a 511x511 result, computing a 512x512 result
+;without boundary conditions but throwing away the pixels on the border,
+;etc.
+
+;   r0 -> image(n,m)         image(n,m+1)         image(n,m+2)
+;   r1 -> image(n+514,m)     image(n+514,m+1)     image(n+514,m+2)
+;   r2 -> image(n+2*514,m)   image(n+2*514,m+2)   image(n+2*514,m+3)
+;   r3 -> FIR coefficients
+;   b  -> output image
+
+        move    #mask,r3                ;pt to coef.
+        move    #-8,n3
+        move    #image,r0               ;top boundary
+        move    #image+514,r1           ;left of first pixel
+        move    #image+2*514,r2         ;left of 2nd row
+
+        move    #512,y1
+        move    #-1,n1                  ;adjust.
+        move    n1,n2
+
+        move    #output,b               ;output image
+        move              x:(r0)+,y0    ;y0=im(1,1)   
+        move              x:(r3)+,x0    ;x0=c11
+
+        do      y1,rows
+        do      y1,cols
+        mpy     y0,x0,a   x:(r0)+,y0    x:(r3)+,x0    ;im(1,1)*c11
+        mac     y0,x0,a   x:(r0)+n0,y0  x:(r3)+,x0    ;+im(1,2)*c12
+        mac     y0,x0,a   x:(r1)+,y0    x:(r3)+,x0    ;+im(1,3)*c13
+        mac     y0,x0,a   x:(r1)+,y0    x:(r3)+,x0    ;+im(2,1)*c21
+        mac     y0,x0,a   x:(r1)+n1,y0  x:(r3)+,x0    ;+im(2,2)*c22
+        mac     y0,x0,a   x:(r2)+,y0    x:(r3)+,x0    ;+im(2,3)*c23
+        mac     y0,x0,a   x:(r2)+,y0    x:(r3)+,x0    ;+im(3,1)*c31
+        mac     y0,x0,a   x:(r2)+n2,y0  x:(r3)+n3,x0  ;+im(3,2)*c32
+        macr    y0,x0,a   x:(r0)+,y0    x:(r3)+,x0    ;+im(3,3)*c33
+        move              a,x:(b1)
+        inc24   b
+cols
+; adjust pointers for frame boundary
+        move    #2,n1
+        move    n1,n2
+        inc     b         x:(r0)+,x1                  ;adj r0
+        inc     b         x:(r1)+n1,x1                ;adj r1
+        move    (r2)+n2                               ;adj r2
+        move              x:(r0)+,x1                  ;preload
+        move    #-1,n1                                ;adjust.
+        move    n1,n2
+
+rows
+
+========================================================================
+B.2.24  Signed 16 Bit Result Divide
+;This is a routine for a 4 quadrant divide (i.e., a signed divisor and
+;a signed dividend) which generated a 16-bit signed quotient and a 32-bit
+;signed remainder. The quotient is stored in the lower 16 bits of accum-
+;ulator a, a0, and the remainder in the upper 16 bits a1. The true
+;(restored) remainder is stored in b1. The original dividend must occupy
+;the low order 32 bits of the destination accumulator, a, and must be a
+;POSITIVE number. The divisor must be larger than the dividend so that a 
+;fractional quotient is generated.
+
+        abs     a    a,b        ;make dividend positive
+        move    b,x:$0          ;save rem. sign in x:$0
+        eor     x0,b            ;quo. sign in N bit of CCR
+        andi    #$fe,ccr        ;clear carry bit C (quotient sign bit)
+        rep     #$10            ;form a 16-bit quotient
+        div     x0,a            ;form quot. in a0, remainder in a1
+        tfr     a,b	            ;save remainder and quot. in b1,b0
+        jpl     savequo         ;go to savequo if quot. is positive
+        neg     b               ;complement quotient if N bit is set
+savequo 
+        tfr     x0,b            ;get signed divisor
+        move    b0,x1           ;save quo. in x1
+        abs     b               ;get abs value of signed divisor
+        add     a,b             ;restore remainder in b1
+        bftstl  #$8000,x:$0     ;test if remainder is positive
+        beq     <done1          ;branch if positive
+        move    #$0,b0          ;prevent unwanted carry
+        neg     b               ;complement remainder
+done1
+
+========================================================================
+B.2.25  Signed Integer Divide
+;Registers usex: a,b,x0
+;Output: Quotient -> a0
+
+        move    #dividend,a        ;sign ext A2 
+        move    a2,a1              ;and A1
+        move    #dividend,a0       ;move into A
+        asl     a                  ;prep divide
+        move    #divisor,x0        ;divisor into x0
+        abs     a    a,b           ;dividend pos
+        andi    #$fe,ccr           ;clr the carry
+        rep     #$10               ;16bit quotient
+        div     x0,a               ;form quot. a0
+        eor     x0,b               ;save sign in N
+        bpl     <done2
+        neg     a                  ;comp.bit is set
+done2
+
+========================================================================
+B.2.26  Multiply 32-bit Fractions
+;This routine will execute the multiplication of two 32-bit FRACTIONAL
+;numbers that are already stored in memory as follows:
+
+;       r0 ->    X:$Paddr P0
+;                X:$Paddr P1
+;       r3 ->    X:$Qaddr Q0
+;                X:$Qaddr Q1
+
+;The initial 32-bit numbers are:
+;   P = P1:P0 (16:16 bits)
+;   Q = Q1:Q0 (16:16 bits)
+
+;The result, R, is a 64 bit number that is stored in the two
+;accumulators A and B as follows:
+;   R = R3:R2:R1:R0
+;     = A1:A0:B1:B0    (32:32bits)
+;     = A2:A1:A0:B1:B0 (sign extended)
+
+        move    #paddr,r0            ;init pter for P
+        move    #qaddr,r3            ;init pter for Q
+        nop
+        move              x:(r0)+,y0  x:(r3)+,x0    ;P0,Q0
+        move              x:(r0)+,y1  x:(r3)+,x1    ;P1,Q1
+        mpyuu   x0,y0,a
+        move    a0,b0                ;b0=P0*Q0=R0
+        dmacsu  x1,y0,a              ;a=P0*Q1+a1
+        macsu   y1,x0,a              ;a=a+ P1*Q0
+        move    a0,b1                ;b1=R1
+        dmacss  x1,y1,a              ;a=P1*Q1+ a1=R3:R2
+
+

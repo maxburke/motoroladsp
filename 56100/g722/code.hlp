@@ -1,0 +1,505 @@
+	Name			:	G722 Speech Code
+
+	Filetype		:	DSP56116 Assembler
+
+	Version			:	1.01
+
+	Date Entered		:	29th June 1990
+
+	Last Modified		:	30th March 1992
+
+	Description		:	Standardised CCITT G722 ADPCM Speech
+					Compression Code
+
+
+
+	General			:	The file G722.ASM contains the source
+
+code for implementing the digital speech coding algorithm as specified by the
+
+CCITT's G722 recommendation document. Associated with this file are two
+
+separate files, G722.CMD and MODCOD.TST. These files should be used with the
+
+assembled G722 code to provide a simple download to the target system and to
+
+tell the G722 algorithm decoder which mode to operate in respectively. The
+
+code as it stands cannot be used to pass test vectors and has been written to
+
+interface with A/D and D/A converters via the DSP56116's Synchronous Serial
+
+Interface in a loopback mode for subjective testing.
+
+	The test vectors that are supplied by the CCITT can only be used to
+
+test the G722 Encoder and Decoder separately without incorporation of the
+
+transmit and receive Q.M.F.'s (Quadrature Mirror Filters). In the G722 source
+
+version provided both the Encoder and Decoder have passed all of the CCITT test
+
+vectors as detailed in Appendix 2 of the recommendation. Testing of the overall
+
+G722 algorithm should be made using separate input/output SNR measuring
+
+software or analogue hardware, preferably by software.
+
+	The 56116ADS driver program that is provided on the disk is an older
+
+version of the program which does not require the executing assembly program
+
+to check the carry flag in the DSP to check for an "end of file" condition.
+
+If users wish to use later versions of the 56116ADS driver then the G722
+
+assembly code will need to be updated to meet this criterion. 
+
+	In order to fully understand the 56116 G722 code, reference should be
+
+made to the CCITT's G722 recommendation "7 kHz Audio coding within 64 kbit/sec".
+
+	The code has been written in absolute format and requires conversion
+
+into relocatable format.
+
+	In order to utilise all three G722 modes in an application separate
+
+communications protocols (like the CCITT's H221 and G725 recommendations) MUST 
+
+be used in order to signal to the Decoder from the transmitting terminal 
+
+which mode is required.
+
+
+
+
+
+
+
+
+
+	Memory Usage	:
+
+
+	(for code provided)
+
+
+						Program			Data
+
+
+
+			Internal		   1001			 232
+
+
+			External		      0 		   0
+
+
+
+			Total			   1001			 232
+
+
+
+	The actual kernel of the G722 code requires considerably less program
+
+memory. This is because the code has been written to be burned into a prom.. 
+
+This means that a lot of the pre-defined constants required for the algorithm 
+
+are defined in program memory and are loaded into to data RAM space upon code 
+
+initialisation.
+
+
+
+
+
+	Performance	:	In order to run in real time the code requires 
+
+a peak performance of 9.41 MIPS for Full-Duplex communication. The breakdown 
+
+of the performance of the G722 kernel for worst case is as below ;
+
+
+
+			Processor Performance		Instruction Cycles
+
+
+				 MIPS
+
+
+
+	G722 Encoder		8.40				524
+
+
+	G722 Decoder		7.64				477
+
+
+	QMF + Encoder		9.41				588
+
+
+	Decoder + QMF		8.66				541
+
+
+
+
+	Further Info.	:	A full application report is available for the
+
+G722 implementation with the order code APR404/D, and a short 8 page H221 
+
+application guide document is available which provides an overview of how the 
+
+G722 Speech and H221 protocol algorithms could fit together in a real-time
+
+application. The document also provides an overview of the implementation of
+
+the H221 protocol software which is also available for the same device. This 
+
+may be obtained from the following person ;
+
+
+
+		Phil Atherton
+
+
+		DSP Applications Engineer
+
+
+		Motorola Semiconductors Ltd
+
+
+		Colvilles Road
+
+
+		Kelvin Industrial Estate
+
+
+		East Kilbride
+
+
+		GLASGOW
+
+
+		Scotland		G75 0TG
+
+
+
+	Tel. :	(+44/0) 3552  40377
+
+
+
+
+	On the disk provided there are a number of directories. The 
+
+documentation that follows describes the files that can be found within the 
+
+respective directories and when to use them.
+
+	In the top level directory there are 7 directories and 1 file which 
+are;
+
+
+ASSEMBLY		; Contains the assembly code which passes the G722
+			; test vectors.
+
+CMDFILE			; Contains all the command files used to automate the
+			; G722 test-vector test.
+
+BATFILE			; Contains the batch files used to execute the G722
+			; test-vector runs.
+
+56116ADS		; Contains an early version of the 56116 ADS driver and
+			; help files for a PC-AT.
+
+RESULTS			; Supplied empty, this directory is used as storage 
+			; for the ADS output files when the G722 code is 
+			; executed.
+
+TESTVECT		; Should contain a subset of the test vector files 
+			; which have been converted into a format acceptable 
+			; for  the 56116 ADS driver and the 'C' executable 
+			; files used  to convert the original CCITT test 
+			; vectors which are supplied in a format not ideal 
+			; for the development tools.
+
+G722CODE		; Contains the final G722 code as written for use in	
+			; an application.
+
+H221FIX			; Contains H221 56116ADS files 
+
+
+CODE.HLP		; This file
+
+	In the ASSEMBLY directory there are 4 files which are;
+
+
+NCDG722.ASM		; The G722 assembly code used to pass the converted
+			; CCITT test vectors on both the 56116 simulator and
+			; ADS board.
+
+NCDG722.LOD		; The 56116 object code of the above file used for the
+			; test-vector runs.
+
+NCDG722.BAT		; This batchfile simply invokes the 56116 assembler,
+			; "ASM5616 -a -b -l ncdg722".
+
+
+	In the CMDFILE directory there are 17 files which are;
+
+
+MODDEC1.TST		; Used to tell the executed "ncdg722" code that the G722
+
+MODDEC2.TST		; Decoder is to be tested and that the G722 Decoder is
+
+MODDEC3.TST		; set for MODE 1, 2 OR 3.
+			; Contains 2 values, "0001  000x",
+			; First '0001' is for testing the G722 Decoder.
+			; 'x' is the Decoder  mode and takes the values 1, 2 or 3.
+
+MODCOD.TST		; Tells the executed "ncdg722" code that the G722
+			; Encoder is to be tested and here the MODE is irrelevant.
+			; Contains a single value "0000" for Encoder test.
+
+T1C1XMT.CMD		; These files are the command files which test individual
+
+T1C2XMT.CMD		; test-vector runs of the NCDG722 code. All have been
+
+T1C1XMT#.CMD		; set up to automatically load in the MODE files and
+
+T1C2XMT#.CMD		; NCDG722.LOD  file to the designated target system and
+
+T2R1COD1.CMD		; to dump the respective output files into the RESULTS
+
+T2R1COD2.CMD		; directory.
+
+T2R1COD3.CMD
+
+T2R2COD1.CMD
+
+T2R2COD2.CMD
+
+T2R2COD3.CMD
+
+T1D3COD1.CMD
+
+T1D3COD2.CMD
+
+T1D3COD3.CMD
+
+
+	In the BATFILE directory there are 4 files which are;
+
+
+G722TEST.BAT		; Batchfile which is used to invoke the  56116 ADS driver
+			; program with the appropriate COMMAND file and once
+			; the vectors have been passed it compares the
+			; appropriate test-vector files with the NCDG722 output
+			; files.
+
+HALFTEST.BAT		; This batchfile is a subset of G722TEST.BAT  so that
+			; some of the test-vectors could be included on disk for a
+			; sample test.
+
+ADS16ON.BAT		; Batch file which sets up the PC's path for the 56116
+			; ADS driver that is provided on the disk.
+
+COMPADS.EXE		; Test vector and ADS output compare program
+
+
+	In the 56116ADS directory there should be 6 files. These should be
+provided by the user. For later versions of the 56116ADS driver software the
+ncdg722.asm files will require modification to take into account the new 
+end_of_file recognition process. (See your ADS manual for the description) ;
+
+
+ADS56116.EXE		; The ADS driver program and associated help files
+
+ADS16CMD.HLP
+
+ADS16REG.HLP
+
+ADS16USR.HLP
+
+FTE000.ASM	
+
+README.DOC
+
+
+	In the TESTVECT directory there should be 17 files which are ;
+
+
+CVCBIN.C		; 'C' file used to convert CCITT Hex. file to binary
+
+CVCSIM.C		; 'C' file used to convert CCITT Hex file to Simulator
+			; format
+
+CVCADS.C		; 'C' file used to convert CCITT Hex. file to ADS format
+
+CVCBIN.EXE		; Executable file of CVCBIN.C
+
+CVCSIM.EXE		; Executable file of CVCSIM.C
+
+CVCADS.EXE		; Executable file of CVCADS.C
+
+WORKCV.BAT		; Batch files used to convert ALL CCITT test vectors
+
+WORKSIM.BAT
+
+WORKADS.BAT
+
+ADST1C1.XMT		; Handful of the CCITT test files used for on-disk
+
+ADST1C2.XMT		; test passes. These should be provided by you and
+
+ADST2R1.COD		; converted into the correct format using the CVC.exe 
+
+ADST2R2.COD		; program.
+
+ADST3L2.RC1
+
+ADST3L2.RC2
+
+ADST3L2.RC3
+
+ADST3H2.RC0
+
+
+	IN THE G722CODE Directory there are 2 files which are ;
+
+
+G722.ASM		; This file is the final G722 code version as 
+			; described in the G722 application note. 
+
+G722_156.ASM		; This assembly file is a modified version of
+			; the G722.ASM file which is written for use
+			; with the DSP56156 processor using its on-chip
+			; codec and Phase-Locked-Loop.
+
+	In the H221FIX directory there are 12 files which are ;
+
+
+H221RX.ASM		; These files are the latest updates of modified
+			; H221 files.
+H221TX.ASM
+
+H221VAR.ASM
+
+
+	In the RESULTS directory there are 0 files. This directory is the 
+
+destination directory for the G722 ADS test output files.
+
+
+	In order to implement the test vector test you must first go to the
+
+BATFILE directory. Once in this directory type "ADS16ON" ;  this sets up the
+
+path of the PC to recognise the ADS driver program that the user provides.
+
+Once this has been done you must then type "HALFTEST" , as this invokes the
+
+batchfile which tests the CCITT test vector subset included on disk.
+
+	The first command that this batchfile executes is "ADS56116" which
+
+invokes the on-disk ADS driver program.
+
+Once in the ADS environment, at the  "ADM0>"  prompt type ;
+
+
+
+		"cf" <spacebar> "r" <return>
+
+
+this resets the 56116 command converter board. Next type ;
+
+
+		"f" <spacebar> "r" <return>
+
+
+where this resets the 56116 chip on the ADS board.  Once this has been done
+
+without problem type ;
+
+
+		"d" <return>
+
+
+which should display the contents of the 56116 core registers.  Now you can 
+
+quit the ADS driver program by typing ;
+
+
+		"q" <return>
+
+
+	This process is undertaken to properly reset the 56116 ADS hardware 
+
+before actually performing the tests.
+
+	The batch file now automatically invokes the ADS driver once more, but 
+
+with the appropriate COMMAND file. "<filename>.cmd".  This then automatically 
+
+loads the "ncdg722.lod" file into the 56116 chip on the ADS board and sets up 
+
+the appropriate input and output files and their directories for the proper 
+
+execution of the tests. Once this has been done, again at the "ADM0>" prompt 
+
+type ;
+
+
+		"g" <return>
+
+
+which begins execution of the first test.  You should then check that the PC is
+
+actually accessing the floppy disk to make sure that there is 56116ADS activity.
+
+Once the test is complete the 56116ADS drIver program will respond with the
+
+prompt ;
+
+
+		ADM#0	END OF INPUT FILE
+
+
+	This indicates that all the input test vectors have been passed. Now
+
+you may quit the ADS driver again by typing ;
+
+
+		 "q"
+
+
+	The batch file now invokes the file comparison process and the result 
+
+of the test is displayed on the PC display screen. The command which is 
+
+executed will be ;
+
+
+	compads		a:<directory1><filename1>   a:<directory2><filenname2>
+
+
+
+	Once the files have been compared if there is an error, the program will
+
+indicate the values in each file and the position within the file where the 
+
+error occured.
+
+	The process indicated above is then repeated for the other command 
+
+files. The test vectors can be acquired from the CCITT for a nominal fee and 
+
+to then adjust the files and directories in the COMMAND and BATCH  file 
+
+directories accordingly.
+
+
+
+	****************************************************************
+
+

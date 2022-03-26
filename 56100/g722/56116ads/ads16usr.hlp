@@ -1,0 +1,101 @@
+>pin
++  DSP56116 Pin Names and PGA Pin Numbers
++  1   2    3	4      5   6   7   8	    9	    10	   11	  12	 13
++A D15 R/W* TS* PS/DS* N/C BG* BR* DSO	    DSI/OS0 H6/PB6 H4/PB4 H3/PB3 H1/PB1
++B D13 D14  BS* GND    GND BB* DR* DSCK/OS1 H7/PB7  H5/PB5 VCC	  H2/PB2 H0/PB0
++C D12 GND  N/C 	   VCC TA* VCC				  GND
++D D11 VCC						      HCK/PB14 HEN/PB12
++E D10 GND						      HRW/PB11 HA2/PB10
++F D7  D8   D9					      HA1/PB9 HA0/PB8 SC01/PC9
++G D5  D6   GND
++H D4  D3   GND
++J D2  VCC
++K D1  D0
++L A15 GND		   A7  GND A1
++M A14 A12  VCC GND    VCC A6  VCC A2	    GND
++N A13 A11  A10 A9     A8  A5  A4  A3	    A0
+>port
++addr or abus or porta :Port A address
++data or dbus or portd :Port A data
++imc		       :Interrupt and Mode Control Pins
++ctrl		       :Bus Control Signals
+>io
++     DSP56116 X Memory Internal I/O Memory Map
++$FFFD SSI1 TRANSMIT MASK HIGH (TMH1)	$FFDF INTERRUPT PRIORITY (IPR)
++$FFFC SSI1 TRANSMIT MASK LOW (TML1)	$FFDE BUS CONTROL (BCR)
++$FFFB SSI1 RECEIVE MASK HIGH (RMH1)	$FFD9 SSI1 CONTROL REGISTER B (CRB1)
++$FFFA SSI1 RECEIVE MASK LOW  (RML1)	$FFD8 SSI1 CONTROL REGISTER A (CRA1)
++$FFF9 SSI1 TRANSMIT/RECEIVE (TX1/RX1)	$FFD1 SSI0 CONTROL REGISTER B (CRB0)
++$FFF8 SSI1 STATUS (SSR1)		$FFD0 SSI0 CONTROL REGISTER A (CRA0)
++$FFF5 SSI0 TRANSMIT MASK HIGH (TMH0)	$FFC4 HOST CONTROL REGISTER (HCR)
++$FFF4 SSI0 TRANSMIT MASK LOW (TML0)	$FFC3 PORT C DATA DIRECTION (PCDDR)
++$FFF3 SSI0 RECEIVE MASK HIGH (RMH0)	$FFC2 PORT B DATA DIRECTION (PBDDR)
++$FFF2 SSI0 RECEIVE MASK LOW  (RML0)	$FFC1 PORT C CONTROL (PCC)
++$FFF1 SSI0 TRANSMIT/RECEIVE (TX0/RX0)	$FFC0 PORT B CONTROL (PBC)
++$FFF0 SSI0 STATUS/TIMESLOT (SSR0/TSR0)
++$FFEF TIMER PRELOAD (TPR)
++$FFEE TIMER COMPARE (TCPR)
++$FFED TIMER COUNT (TCTR)
++$FFEC TIMER CONTROL (TCR)
++$FFE5 HOST TRANSMIT/RECEIVE (HTX/HRX)
++$FFE4 HOST STATUS (HSR)
++$FFE3 PORT C DATA (PCD)
++$FFE2 PORT B DATA (PBD)
++
+>int
++     DSP56116 Interrupt Start Addresses and Interrupt Source
++$e000	Hardware Reset		       $0016  SSI0 Transmit Data
++$0000	Hardware Reset		       $0018  SSI1 Receive with Exception
++$0002	Illegal Instruction	       $001A  SSI1 Receive Data
++$0004	Stack Error		       $001C  SSI1 Transmit with Exception
++$0006	Reserved		       $001E  SSI1 Transmit Data
++$0008	SWI			       $0020  Timer Overflow
++$000A	IRQA			       $0022  Timer Compare
++$000C	IRQB			       $0024  Host DMA Receive Data
++$000E	Reserved		       $0026  Host DMA Transmit Data
++$0010	SSI0 Receive with Exception    $0028  Host Receive Data
++$0012	SSI0 Receive Data	       $002A  Host Transmit Data
++$0014	SSI0 Transmit with Exception   $002C  Host Command (default)
++
+>host
++    HOST INTERFACE 56116 ADDRESS MAP
+++-------------+------------+------------+
++  ADDR  (HEX)	 56116 READ  56116 WRITE
+++-------------+------------+------------+
++  X:$FFC4	    HCR 	HCR
++  X:$FFE4	    HSR 	----
++  X:$FFE5	    HRX 	HTX
+++-------------+------------+------------+
+>mode
++  Mode   MB MA     DSP56116 Initial Chip Operating Mode
+++------+--------+-----------------------------------------------+
++   0	   0  0     Special Bootstrap Mode 1
++   1	   0  1     Special Bootstrap Mode 2
++   2	   1  0     Normal Expanded
++   3	   1  1     Development Expanded
+>map
++	   X DATA
++$FFFF +-------------+
++	   On-Chip
++	 Peripherals
++$FF80 +-------------+
++	  External
++	  X Data
++	  Memory
++$07FF +-------------+
++	  Internal
++	  X Data RAM
++$0000 +-------------+
++
+>mod
++  MMMM   Address Calculation Arithmetic
+++------+-------------------------------------+
++  0000   Reverse Carry (Bit Reversed Update)
++  0001   Modulo      2
++  0002   Modulo      3
++     . 	.	  .
++  FFFE   Modulo   65,535 ((2**16)-1)
++  FFFF   Linear   (Modulo 2**16)
+
+
+

@@ -1,0 +1,191 @@
+>a
+>b
++40 bit Data Alu Accumulator Register
+>a0
+>a1
+>b0
+>b1
+>x0
+>x1
+>y0
+>y1
++16 bit Data Alu Register
+>a2
+>b2
++8 bit Data Alu Register
+>x
+>y
++32 bit Data Alu Register
+>r0
+>r1
+>r2
+>r3
++16 bit Address Alu Address Register
+>n0
+>n1
+>n2
+>n3
++16 bit Address Alu Offset Register
+>m0
+>m1
+>m2
+>m3
++16 bit Address Alu Modulo Register
+>bcr
++Port A Bus Control Register. X:$FFDE.
++ {R B}
++ {H S} * * * *|{  X mem  }|{  P mem  }
+>ipr
++Interrupt Priority Register. X:$FFDF.
++     {S S S S} 	{I I I I I I}
++ {T T 0 0 1 1 H H}	{B B B A A A}
++ {L L L L L L L L}	{L L L L L L}
++ {1 0 1 0 1 0 1 0} * * {2 1 0 2 1 0}
+>jump
++Internal flag that indicates if a branch or jump is actually executed
+>la
++16 bit Program Controller Loop Address Register
+>lc
++16 bit Program Controller Loop Count Register
+>omr
++8 bit Program Controller Operating Mode Register
++ {C S	 S E M M M}
++ {D D R A X C B A}
+>pc
++OnCE Program Address Bus Decode Register - also called program counter
+>ssh
++Program Controller System Stack High
+>ssl
++Program Controller System Stack Low
+>sp
++Program Controller Stack Pointer Register
++     {U S P P P P}
++ * * {F E 3 2 1 0}
+>pbc
++Port B Control Register. X:$FFC0.
++		{B}
++		{C}
++ * * * * * * * {0}
+>pbddr
++Port B Data Direction Register. X:$FFC2.
+>Port B Data Register. X:$FFE2.
+>sr
++Program Controller Status Register
++ {	 MR	  }|{	 CCR	    }
++ {L F}     {S S I I}
++ {F V 1 0 1 0 1 0 S L E U N Z V C}
+>pcc
++Port C Control Register. X:$FFC1.
+>pcddr
++Port C Data Direction Register. X:$FFC3.
+>Port C Data Register. X:$FFE3.
+>hcr
++Read-Write Host Control Register. X:$FFC4
++	    {H H H}
++	{H H C T R}
++	{F F I I I}
++ * * * {3 2 E E E}
+>hsr
++Read-Only Host Status Register. X:$FFE4.
++	      {H H}
++ {D}	  {H H H T R}
++ {M}	  {F F C D D}
++ {A} * * {1 0 P E F}
+>hrx
++Read-Only Host Receive Data Register. X:$FFE5.
+>htx
++Write-Only Host Transmit Data Register. X:$FFE5
+>icr
++Read-Write Interrupt Control Register. Host Processor Address 0.
++ I	      T R
++ N H H H H   R R
++ I M M F F   E E
++ T 1 0 1 0 * Q Q
+>cvr
++Read-Write Command Vector Register. Host Processor Address 1.
++ H
++ C * * {   HV	  }
+>isr
++Read-Only Interrupt Status Register. Host Processor Address 2.
++ H	    T T R
++ R D	H H R X X
++ E M	F F D D D
++ Q A * 3 2 Y E F
+>ivr
++Read-Write Interrupt Vector Register. Host Processor Address 3.
+>rxh
++Read-Only Receive Byte Register (High Byte). Host Processor Address 6.
+>rxl
++Read-Only Receive Byte Register (Low Byte). Host Processor Address 7.
+>txh
++Write-Only Transmit Byte Register (High Byte). Host Processor Address 6.
+>txl
++Write-Only Transmit Byte Register (Low Byte). Host Processor Address 7.
+>tcr
++Read-Write Timer Control Register. X:$FFEC.
++   I T T T C O
++ T N O O O I I E D D D D D D D D
++ E V 2 1 0 E E S C C C C C C C C
+>tctr
++Read-Write Timer Count Register. X:$FFED.
+>tpr
++Read-Write Timer Preload Register. X:$FFEF.
+>tcpr
++Read-Write Timer Compare Register. X:$FFEE.
+>cra0
+>cra1
++Read-Write Control Register A. SSI0 - X:$FFD0. SSI1 - X:$FFD8.
++ P W W D D D D D P P P P P P P P
++ S L L C C C C C M M M M M M M M
++ R 1 0 4 3 2 1 0 7 6 5 4 3 2 1 0
+>crb1
+>crb0
++Read-Write Control Register B. SSI0 - X:$FFD1. SSI1 - X:$FFD9.
++		  S S S   A
++ R T	  M S F F H C C F / F O O
++ I I R T O Y S S F K K S M L F F
++ E E E E D N I L D P D D U G 1 0
+>rml0
+>rml1
++Read-Write Receive Slot Mask Register Low. SSI0 - X:$FFF2.  SSI1 - X:$FFFA.
++ R R R R R R R R R R R R R R R R
++ S S S S S S S S S S S S S S S S
++ 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
++ 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+>rmh0
+>rmh1
++Read-Write Receive Slot Mask Register High. SSI0 - X:$FFF3. SSI1 - X:$FFFB.
++ R R R R R R R R R R R R R R R R
++ S S S S S S S S S S S S S S S S
++ 3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1
++ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6
+>tml0
+>tml1
++Read-Write Transmit Slot Mask Register Low. SSI0 - X:$FFF4. SSI1 - X:$FFFC.
++ T T T T T T T T T T T T T T T T
++ S S S S S S S S S S S S S S S S
++ 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
++ 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+>tmh0
+>tmh1
++Read-Write Transmit Slot Mask Register High. SSI0 - X:$FFF5. SSI1 - X:$FFFD.
++ T T T T T T T T T T T T T T T T
++ S S S S S S S S S S S S S S S S
++ 3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1
++ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6
+>rx0
+>rx1
++Read-Only Serial Receive Register. SSI0 - X:$FFF1. SSI1 - X:$FFF9.
+>tx0
+>tx1
++Write-Only Serial Transmit Register. SSI0 - X:$FFF1. SSI1 - X:$FFF9.
+>ssr0
+>ssr1
++Read-Only Status Register. SSI0 - X:$FFF0.  SSI1 - X:$FFF8.
++ R T R T R T I I
++ D D O U F F F F
++ F E E E S S 1 0
+>tsr0
+>tsr1
++Write-Only Time Slot Register. SSI0 - X:$FFF0. SSI1 - X:$FFF8.
+

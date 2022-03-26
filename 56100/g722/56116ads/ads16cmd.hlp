@@ -1,0 +1,689 @@
+>commands
++{    --------- DSP56116 APPLICATION DEVELOPMENT SYSTEM COMMANDS---------}
+
++  {A}SM [{DVx}] [(beginning at) addr] [{I}(nteractive)] [assembler_mnemonic]
++  {B}REAK [{DV0..7}] [{#}bn] [{addr}|{OFF}] [{access}] [{type}] [{expression}]
++  {C}HANGE [{DV0..7}] [reg[_block]/addr[_block] (to)[expression]
++  {CO}PY (from) [{DVx}] addr[_block] (to)[{DV0..7}] addr
++  {D}ISPLAY [{DV0..7}] [{ON}/{OFF}/{ALL}/{IO}] [reg[_block/_group]/addr[_block]]...
++  {D}ISPLAY {W}(active DVs)/{V}(version)
++  {DE}VICE {DV0..7} [{ON}/{OFF}]
++  {DI}SASSEMBLE [{DV0..7}] [addr[_block]]
++  {E}VALUATE [{DVx}] [{B}(binary)/{D}(decimal)/{F}(float)/{H}(hexadecimal)] expression
++  {F}ORCE [{DV0..7}] {a|b|c|d|e}
++  {G}O [{DV0..7}] [(from)addr/{R}(reset)] [(to break #){#}bn] [(occurrence){:}count]
++  {H}ELP [{DVx}] [command|register|{vectors}|{io}]
++  {HO}ST (address)[{IO}] [{TIMEOUT}] [{hex value for IO address or TIMEOUT count}]
++  {I}NPUT [{DV0..7}] [{#}number] {OFF}/{TERM}/filename [{-rd}|{-rf}|{-rh}]
++  {L}OAD [{DV0..7}|{S}(state)}] (from) filename
++  {LO}G [{DV0..7}] [{OFF}] [{C}(commands)/{S}(session) [filename]]
++  {O}UTPUT [{DV0..7}] [{#}number] {OFF}/{TERM}/filename [{-rd}|{-rf}|{-rh}]
++  {P}ATH [{DV0..7}] [pathname]
++  {Q}UIT
++  {R}ADIX [{DV0..7}] [{B}(bin)/{D}(dec)/{H}(hex)/{F}(float)] [reg[_block]/addr[_block]
+<  {S}AVE [{DV0..7}] {S}(state)/addr_block... filename
++  {ST}EP [{DV0..7}] [count]
++  {SY}STEM [system_command [parameter_list]]
++  {T}RACE [{DV0..7}] [count]
++  {W}AIT [count(seconds)]
++  {Macro filename}
++  {;}comment string entry
++{----------- Other Help Topics ----------------}
++  {io}  : list of on-chip io registers and their addresses
++  {int} : list of interrupt vector addresses
++  {pin} : list of pin names and numbers
+>tio
++
++{----------- Terminal Input Examples ----------}
++
++  Input data value may be hexadecimal, decimal, float, or pin data.
++  Hex input just expects hex digits 0-f.  Don't precede with $.
++  Decimal input expects decimal integers. Don't use float notation.
++  Float input accepts almost any floating point format.
++  Pin data input expects 1, 0, or x for each pin.  No imbedded blanks.
++
+>assemble
++
++{----------- ASM: Single Line Assembler ----------}
++
++  {A}SM [{DV0..7}] [(beginning at) addr] [assembler_mnemonic]
++
++  {asm p:$50}
++   Start interactive assembler at program address 50(hex) of default Device.
++
++  {asm x:0 move r0,d0.l}
++  Assemble single instruction at x memory address 0 of default Device.
++
++  {asm}
++  Start assembler at current program counter value of default Device.
++
++  {asm dv3 p:100}
++  Start assembler at program memory address 100 (decimal) of Device 3.
++
++  {asm i}
++  Start assembler at current program counter value of default Device.
++  After instruction is assembled and placed in memory, trace the instruction.
++
++  {asm p:$50 i move #1,x0}
++  Assemble a move #1,x0 instruction, place the opcode at program address
++  50 hex, and immediately execute the instruction.
++
+>break
++
++{----------- BREAK: Set, Modify, or Clear Breakpoint -----------}
++
++  {B}REAK [{DV0..7}] [{#}bn] [{addr}|{OFF}] [{access}] [{type}]
+	   {address|address_range} [{count}] [{expression}]
++
++  There are two types of breakpoints that may be programmed.  These are
++  software breakpoints and hardware breakpoints.  There are 15 software
++  conditional breakpoints which monitor condition code register bits
++  and 21 conditional floating point breakpoints which monitor condition
++  code register, IEEE exception register and Exception register bits.
++  A total of 99 software breakpoints may be set at one time in user
++  program RAM and must be set at opcode addresses and not operand addresses.
++
++  There are 8 types of hardware breakpoints where 4 types pertain to
++  program memory accesses and 4 pertain to data memory accesses. Program
++  and data memory breakpoints may be set simultaneously.  One program and
++  one data memory hardware breakpoint is allowed.
+<
++  There are certain default rules for setting breakpoints with a minimun
++  of key strokes as follows:
++  1. Default breakpoints are always software if no type is entered and
++     a single address is specified.
++  2. If a breakpoint range is specified and no type is entered it will
++     default to a hardware breakpoint of a read of program core fetch.
++  3. If more than one range is entered in a breakpoint list, the last range
++     will be the hardware breakpoint.
++  4. Default breakpoint count is 1 unless specified.  Software breakpoints
++     are always count of 1.
+<
++
++    Hardware Breakpoint Types		    Software Breakpoint Types
++  {pcf}   program core fetch		 {cc}  carry clear  (c=0)
++  {pcm}   program core move		 {cs}  carry set    (c=1)
++					 {eq}  equal	    (z=1)
++  {xab1}  X Address Bus 1 access	 {ge}  greater or equal (n && v = 0)
++  {xab2}  X Address Bus 2 access	 {gt}  greater than (z v (n && v) = 0)
++					 {hi}  higher	    (z v c = 0)
++					 {le}  less or equal (z v (n && v) = 1)
++					 {ls}  lower or same (z v c = 1)
++					 {lt}  less than    (n && v = 1)
++  Hardware Breakpoint Accesses 	 {mi}  minus	    (n = 1)
++  {r}	   break on read only		 {ne}  not equal    (z = 0)
++  {w}	   break on write only		 {pl}  plus	    (n = 0)
++  {rw}    break on read or write	 {vc}  overflow clear (v = 0)
++					 {vs}  overflow set (v = 1)
++					 {al}  always true  (n.a.)
++
+<
++  A breakpoint expression may be any logical expression that is valid for
++  the DSP56116 Macro Assembler (ASM56116).  The following is a list of
++  operators that may be used in the breakpoint expression:
++
++    {<}   less than		     {&&}   logical 'and'
++    {<=}  less than or equal to     {||}   logical 'or'
++    {==}  equal to		     {! }   logical 'negate'
++    {>=}  greater than or equal to  {& }   bitwise 'and'
++    {> }  greater than 	     {| }   bitwise 'or'
++    {!=}  not equal to 	     {~ }   bitwise one's complement
++    {+ }  addition		     {^ }   bitwise 'exclusive or'
++    {- }  subtraction		     {<<}   shift left
++    {/ }  division		     {>>}   shift right
++
+<
++  {----------- Breakpoint Actions -----------}
++    {H }    Halt execution.  This is the default.
++    {In}    Increment counter variable CNTn (n=1/2/3/4).
++    {N }    Note - display the breakpoint expression and continue.
++    {S }    Show the enabled register/memory set and continue.
++
++  {----------- Examples -----------}
++  {break}
++  Display all currently enabled breakpoints.
++
++  {break off}
++  Remove all currently enabled breakpoints.
++
++  {break #1 off}
++  Remove breakpoint number 1.
++
+<  {break $500 }
++   The default Device halts program execution when the program counter reaches
++   the instruction at address 500.
++
++   {break p:300 t(lc<10)&&(r0>100)}
++  The default Device will test the conditions of the expression when the
++  program counter reaches the instruction at address 300.  If the condition
++  is true the Device will halt program execution and display its registers.
++
++  {break dv2 p:1000}
++  Device 2 will halt program execution and display its registers when its
++  program counter reaches the instruction at address 1000.
++
++  {break al p:105}
++  Set a software breakpoint at program address 105.  The software breakpoint
++  will be a debug opcode and it should be placed at an opcode address always.
++
+>change
++
++  {----------- CHANGE: Change Register or Memory Value -----------
++
++ {C}HANGE [{DV0..7}] [reg[_block]/addr[_block] (to)[expression]
++
++  {change pc}
++  Display register values individually starting with the program counter
++  and prompt the user for new values.
++
++  {change dv2 x:$55}
++  Display Device 2 X memory location 55(hex) and prompt the user for a new value.
++
++  {change p:$20 $123456 }
++  Change p memory address hexadecimal 20 to hexadecimal 123456.
++
++  {change r0..r7 0 p:$30..$300 0 x:$fffe $55 pc 100}
++  Change the default Device registers r0 through r7 to 0, p memory addresses hexadecimal 30
++  through 300 to 0, x memory address hex fffe to hex 55 and the program
++  counter to 100 decimal.
++
++  {change dv3,4,7 p:$20 $123456 }
++  Change Devices 3,4, and 7 p memory address 20(hex) to 123456(hex).
++
++  {change r0..r7 0 p:$30..$300 0 x:$fffe $55 pc 100}
++  Change the default Device registers r0 through r7 to 0, p memory addresses
++  hexadecimal 30 through 300 to 0, x memory address hex fffe to hex 55 and
++  the program counter to 100 decimal.
++
+>copy
++
++  {----------- COPY: Copy a Memory Block -----------}
++
++  {CO}PY (from) [{DVx}] addr[_block] (to)[{DV0..7}] addr
++
++  {copy p:$100..$500 x:$500}
++  Copy the default Device program memory values located from 100(hex)
++  through hexadecimal 500 to x memory starting at hexadecimal 500.
++
++  {copy x:0#100 p:0}
++  Copy one hundred memory locations of the default Device beginning at X
++  memory location 0 to p memory beginning at location 0.
++
++  {copy p:0..20 p:40}
++  Copy p memory locations 0 through 20 to p memory locations 40 through 60.
++
++  {copy dv1 p:0..20 d2..5 p:40}
++  Copy Device 1 p memory locations 0 through 20 to Devices 2,3,4 and 5 p memory
++  locations 40 through 60.
+>disassemble
++
++  {----------- DISASSEMBLE: Object Code Disassembler -----------}
++
++  {DI}SASSEMBLE [addr[_block]]
++
++  {disassemble }
++  Disassemble 20 instructions beginning at program counter address.
++
++  {disassemble y:5}
++  Disassemble 20 instructions beginning at y memory map address 5.
++
++  {disassemble p:0..20}
++  Disassemble program memory address block 0 to 20.
++
++  {disassemble x:$50#10}
++  Disassemble 10 instructions starting at x memory map hex 50.
++
+>display
++
++  {-----------DISPLAY: Display Register or Memory -----------}
++
++ {D}ISPLAY [{DV0..7}] [{ON}/{OFF}/{ALL}/{IO}] [reg[_block/_group]/addr[_block]].
++  {D}ISPLAY {W}(active DVs)/{V}(version)
++
++  {display}
++  Display all currently enabled registers and memory.
++
++  {display w}
++  Display Devices that are currently executing user programs.
++
++  {display v}
++  Display ADS56116 rev. number, date of release, and default Device monitor rev.
++
++  {display dv2 v}
++  Display ADS56116 rev. number, data of release, and Device #2 monitor rev.
++
++  {----------- Register and Memory Display Modes -----------}
++
++    {ON}  Always display the following registers and memory locations.
++    {OFF} Never display the following registers and memory locations.
++
++  {----------- Examples -----------}
++
++  {display on }
++  Enable all registers and stacked levels for display
++
++  {display on p:0..20 x:30..40 y:$100}
++  Display enable p memory address block 0 to 20, x memory address block
++  30 to 40 and y memory address hexadecimal 100.
++
++  {display off }
++  {display on dsp}
++  Disable all display, then enable display of the DSP56116 programming model
++  registers only.
++
+<
++  {----------- Register Group Names -----------}
++
++    {ALL}   all registers.
++    {DSP}   all of the DSP56116 programming model registers.
++    {IO}    all peripheral registers.
++    {SSI0}  all synchronous serial interface 0 registers.
++    {SSI1}  all synchronous serial interface 1 registers.
++    {ONCE}  all on-chip emulator registers.
++    {HOST}  all host port interface registers.
++    {STACK} all current stacked levels.
++
++  {display stack}
++  Immediate display of all stacked levels up to the current stack pointer
++  value.  Example: sp=5 shows stacked values from 1 to 5.
++
+>device
++
++  {----------- DEVICE: Select a Default Device --------------}
++
++ {DE}VICE {DV0..7} [{ON}/{OFF}]
++
++  {device}
++  Display the current active Device(s) and default Device to be addressed.
++
++  {device dv2}
++  Select Device number 2 as the default Device for command entry.
++
++  {device dv0..2 on}
++  Enable Devices 0,1,and 2 as active devices.
++
+>evaluate
++
++  {----------- EVALUATE: Evaluate an Expression -----------}
++
++ {E}VALUATE [{DVx}] [{B}(binary)/{D}(decimal)/{F}(float)/{H}(hexadecimal)] expression
++
++  Following is a list of valid operators useable in an expression:
++    {<}   less than		     {&&}   logical 'and'
++    {<=}  less than or equal to     {||}   logical 'or'
++    {==}  equal to		     {! }   logical 'negate'
++    {>=}  greater than or equal to  {& }   bitwise 'and'
++    {> }  greater than 	     {| }   bitwise 'or'
++    {!=}  not equal to 	     {~ }   bitwise one's complement
++    {+ }  addition		     {^ }   bitwise 'exclusive or'
++    {- }  subtraction		     {<<}   shift left
++    {/ }  division		     {>>}   shift right
++
++  {evaluate r0+p:$50}
++  Add the value in r0 register to the value in program memory address
++  hexadecimal 50 and display the result using the default radix.
++
++  {evaluate b $345 }
++  Convert hexadecimal 345 to binary and display the result.
++
++  {evaluate h %10101010&p:r0 }
++  Calculate the bitwise AND of the program memory address specified by the
++  value in r0 register and the binary value 10101010 and display the result
++  in hexadecimal.
++
+>force
++
++  {----------- FORCE: Assert Reset or Break on a Device -----------}
++
++  {F}ORCE [{DV0..7}] {a|b|c|d|e}
++  The a and b options are for the command convertor while the c,d and e
++  options are for the target 56116.
++
++  {force a}
++  Force a reset on the current default command convertor.}
++
++  {force b}
++  Force an interrupt on the current default command convertor.
++
++  {force c}
++  Force a reset on the current default target 56116.  This will reset
++  the target 56116 into the operating mode specified by the MODA and MODB
++  pins.
++
++  {force d}
++  Force the current default target 56116 into OnCE mode.
++
++  {force e}
++  Force a reset on the current default target 56116 with the debug request
++  pin asserted.  This will reset the target 56116 into OnCE debug mode.
++
++  {force dv1,4,5 b}
++  Force an interrupt on command convertors 1,4 and 5.
++
++ Note: Execution of a force command from a macro file should be followed by
++ a {wait 1} command to allow the Device reset capacitor time constant to charge
++
+>go
++
++  {----------- GO: Execute DSP56116 Program -----------}
++
++ {G}O [{DV0..7}] [(from)addr/{R}(reset)] [(to break #){#}bn] [(occurrence){:}count]
++
++ {go}
++  Start DSP56116 program execution from the current program counter value
++  of the default Device.
++
++  {go $100}
++  Load the default Device program counter with hexidecimal 100 and start
++  DSP56116 program execution.
++
++  {go dv1..3}
++  Start DSP56116 program execution of Devices 1,2 and 3 at their current
++  program counter addresses.
++
++  {go dv1 100 #5 :3}
++  Start DSP56116 program execution of Device 1 from address P:100.  Halt on
++  the third occurrence of breakpoint number 5.
++
+>help
++
++  {----------- HELP: ADS56116 User Interface Help Text -----------
++
++ {H}ELP [{DVx}] [command|register|topic]
++
++  {help}
++  Display a summary of all available commands and their parameters.
++
++  {help asm}
++  Display a summary of the assemble command and its parameters.
++
++  {help dv1 host}
++  Define host register bits and display the current value of Device# 1.
++
++  {help vectors}
++  Display the vector addresses and the vector source}
++
++  {help io}
++  Display the X Memory Internal I/O Map}
++
+>host
++  {----------- HOST: Change HOST Interface Address -----------}
++
++ {HO}ST (address)[{IO}|{TIMEOUT}] [{value}]
++
++  {host}
++  Display the current HOST Interface Card address.
++
++  {host io $200}
++  Change the host Interface address offset to hexidecimal 200.
++  This command arguement is only valid for the IBM-PC host.
++
++  {host timeout $1ffff}
++  Change the host timeout for software handshakes to the ADM board
++  to a value of hex 1ffff.  The timeout argument is used on PCs that
++  run at faster clock speeds and is used to eliminate timeout errors.
++
+>input
++
++  {----------- INPUT: Assign Input File -----------}
++
++ {I}NPUT [{DV0..7}] [{#}number] {OFF}/{TERM}/filename [{-rd}|{-rf}|{-rh}]
++
++  {input}
++  Display currently open input files for default Device.
++
+  {input dv1 #4 data}
++  Open 'data.io' file number 4 for input to Device 2.
++
++  {input dv2 #1 off}
++  Close current input data file number 1 assigned to Device 2.
++
++  {input data -rf}
++  Open 'data.io' file for floating point input values and assign
++  a file number to it.
++  Note: -rd = radix decimal, -rf = radix float, -rh = radix hexadecimal
++
+>load
++
++  {----------- LOAD: Load DSP56116 Files -----------}
++
++ {L}OAD [{DV0..7}|{S}(state)}] (from) filename
++
+; PC
+;  {load \\source\\testloop.obj}
+; MAC
+;  {load hd:source:testloop.obj}
+; OTHER
++  {load /source/testloop.obj}
++  Load 'testloop.obj' file from directory 'source'.
++
++  {load lasttest}
++  Load 'lasttest.lod' file from current directory.
++
++  {load s lunchbrk}
++  Load 'lunchbrk.ads', replacing the entire current ads56116 state.
++
++  {load dv0..2 testdata}
++  Load Device 0,1 and 2 with the contents of 'testdata.lod' file.
++
+>log
++
++  {----------- LOG: Log Commands and/or Session -----------
++
++ {LO}G [{DV0..7}] [{OFF}] [{C}(commands)/{S}(session) [filename]]
++
++  {log }
++  Display currently opened log files of default Device.
++
+; PC
+;  {log s \\debugger\\session1}
+; MAC
+;  {log s hd:debugger:session1}
+; OTHER
++  {log s /debugger/session1}
++  Log all default Device display entries to filename 'session1.log' in
++  directory 'debugger'
++
++  {log c macro1}
++  Log all commands for default Device to filename 'macro1.cmd'.
++
++  {log off c}
++  Terminate command logging for default Device.
++
++  {log off}
++  Terminate all logging for default Device.
++
++  {log dv0..7 s logfile}
++  Log all Device display entries to filename 'logfile.log'
++
+>output
++
++  {----------- OUTPUT: Assign Output File -----------}
++
++ {O}UTPUT [{DV0..7}] [{#}number] {OFF}/{TERM}/filename [{-rd}|{-rf}|{-rh}]
++
++  {output}
++  Display all output files currently open for default Device.
++
++  {output #1 term}
++  Open output file number 1 to the terminal.  All outputs will be displayed
++  on the screen.
++
++  {output dv2 #5 admout}
++  Open output file number 5 called 'admout.io' for Device 2.
++
++  {output dv2 #1 off}
++  Close output file number 1 for Device 2.
++
++  {output data -rf}
++  Open 'data.io' file for floating point output values and assign
++  a file number to it.
++  Note: -rd = radix decimal, -rf = radix float, -rh = radix hexadecimal
++
++  {WORD TRANSFERS}
++  User program must {jsr $E004} with file number in X0 register
++  and the word to transfer in the A1 register.
++  On return: The Extension(E) bit in the status register will be set if an
++  incorrect transfer occurs, otherwise the E bit will be zero.
++
++  {BLOCK TRANSFERS}
++  User program must {jsr $E006} with file number in upper byte of X0 register
++  the block size in the lower two bytes of X0 and the starting memory
++  location to transfer data block to in R7.
++  On return: The (E) bit in the status register will be set if an
++  incorrect transfer occurs, otherwise the E bit will be zero.
++
+>path
++
++  {----------- PATH: Specify Default Pathname -----------}
++
++ {P}ATH [{DV0..7}] [pathname]
++
+; PC
+;  {path \\adm}
+;  Define the default directory for ADS files as '\\adm'.
+;
+;  {path \\adm\\day2}
+;  Define the default directory for ADS files as '\\adm\\day2'.
+; MAC
+;  {path hd:adm}
+;  Define the default directory for ADS files as 'hd:adm'.
+;
+;  {path hd:adm:day2}
+;  Define the default directory for ADS files as 'hd:adm:day2'.
++  {path /adm/day2}
++  Define the default directory for ADS files as '/adm/day2'.
++
++  {path}
++  Show the current default pathname.
++
+>quit
++
++  {----------- QUIT: Quit DSP56116 User Interface Session -----------}
++
++  {Q}UIT
++
+>radix
++
++  {----------- RADIX: Change Input or Display Radix --------}
++
++ {R}ADIX [{DV0..7}] [{B}(bin)/{D}(dec)/{H}(hex)/{F}(float)] [reg[_block]/addr[_block]
++
++  {radix}
++  Display the default radix currently enabled.
++
++  {radix h}
++  Change input radix to hexadecimal.  Hexadecimal constant entries
++  no longer require a preceding dollar sign, but any decimal constants will
++  require a preceding grave accent ({`}).
++
++  {radix dv1 f x:$100..$1ff}
++  Enable floating point radix display of X memory 100 hex to 1ff hex for
++  Device #1
++
++  {radix d a2 a1 a0}
++  Enable decimal radix display for registers a2,a1 and a0 of default Device.
++
+>save
++
++  {----------- SAVE: Save ADS56116 File -----------}
++
++ {S}AVE [{DV0..7}] {S}(state)/addr_block... filename
++
++  {save p:0..$ff x:0..$20 y:0..$20 session1}
++  Save all three memory maps to OMF file 'session1.lod'.
++
++  {save s lunchbrk}
++  Save the default Device state to filename 'lunchbrk.adm'.
++
++  {save dv1..3 s lunchbrk.b}
++  Save the state of Devices 1,2 and 3 to filename 'lunchbrk.b'.
++  Note: Device#1 path will be the path name preceded to the filename.
++
+>step
++
++  {----------- STEP: Step Through DSP56116 Program -----------}
++
++ {ST}EP [{DV0..7}] [count]
++
++  {step }
++  Step one instruction and display the enabled registers and memory blocks.
++
++  {step $50}
++  Execute hex 50 instructions and display the enabled registers and memory
++  blocks at the end of the hex 50th instruction.
++
++  {step dv1..4 10}
++  Execute 10 instructions on Devices 1,2,3 and 4 siumultaneously and
++  display the enabled registers and memory blocks of each when they have
++  each completed their 10 instructions.
++
+>system
++
++  {----------- SYSTEM: Execute System Command -----------}
++
++  {SY}STEM [system_command [parameter_list]]
++
++  {system dir}
++  Execute the system 'dir' command and immediately return to the ADS56116.
++
++  {system dir *.io}
++  Execute the system 'dir *.io' command
++
++  {system }
++  {dir *.io}
++  {del he.io}
++  {exit}
++  Leave the ADS program  temporarily.	Execute the system 'dir *.io' and
++  'del he.io' commands.  Return to the ADS program when the system 'exit'
++  command is executed.
++
+>trace
++
++  {----------- TRACE: Trace Through DSP56116 Program -----------}
++
++ {T}RACE [{DV0..7}] [count]
++
++  {trace }
++  Execute one instruction and display the enabled registers and memory
++  blocks.
++
++  {trace 20}
++  Execute 20 instructions and display the enabled registers and memory
++  blocks after each instruction.
++
++  {trace dv2,4 5}
++  Execute 5 instructions on Devices 2 and 4 from their current program counter
++  and display their enabled registers and memory blocks after each instruction.+
+>wait
++
++  {----------- WAIT: Wait Specified Time -----------}
++
++  {W}AIT [count(seconds)]
++
++  The wait command pauses for count seconds or until the user types any key
++  before continuing to the next command.  If the wait command is entered
++  without a count parameter,  the command will only terminate if the user
++  types a key.  This command is useful when using a macro file to execute
++  a group of instructions and pause for a review of displayed results.
++
+>comments
++
++  {----------- User Comments -----------}
++
++  {;}comment string entry
++
++  Anything on the command line following a semicolon is considered a user
++  comment.  It can be logged to the output log files to document a session.
++
+>macros
++
++  {----------- Macro Commands -----------}
++
++  {Macro filename}
++
++  Any unrecognized mnemonic entry will be interpreted as a macro name.
++  Macro command files may be created using the ADS56116 LOG command.
++
+ÿ
+

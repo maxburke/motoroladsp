@@ -1,0 +1,549 @@
+
+         /***********************************************\
+         |**                                           **|
+         |**   DSP56200 CHIP DRIVER -DUAL FIR FILTERS  **|
+         |**                        -POLLED I/O        **|
+         |**                                           **|
+         \***********************************************/
+
+
+
+/************************************************************************\
+*                                                                        *
+*   This is an example of a program located in a host processor, used    *
+*   to setup and service a single DSP56200 as two real-time FIR filters. *
+*   In this example, the host processor polls a general purpose input    *
+*   pin to determine the beginning of a new sample period, signified     *
+*   by the reception of a rising edge on the DSP56200's START pin. The   *
+*   general purpose input pin is tied directly to the START pin of the   *
+*   DSP56200.                                                            *
+*                                                                        *
+*   This program, written in the language "C", is provided only as an    *
+*   example, and will be much faster if translated by the user into the  *
+*   assembly language of the host processor.                             *
+*                                                                        *
+*                                                                        *
+*   The example system is configured as shown below:                     *
+*                                                                        *
+*                                                                        *
+*                            ------------                                *
+*                            | DSP56200 |                                *
+*                            ------------                                *
+*                                  ^                                     *
+*                                  |                                     *
+*                                  v                                     *
+*               -------    ------------------    -------                 *
+*      x1(t) -->| A/D |--->| Host Processor |--->| D/A |--> out1(t)      *
+*               -------    |                |    -------                 *
+*                          | (contains code |                            *
+*               -------    |  found in this |    -------                 *
+*      x2(t) -->| A/D |--->|     file)      |--->| D/A |--> out2(t)      *
+*               -------    ------------------    -------                 *
+*                                                                        *
+*                                                                        *
+*                   Figure 1. Dual FIR Filtering System                  *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*   There is only one DSP56200 in this example (i.e., not multiple       *
+*   DSP56200s in cascade), and it is configured in the Dual FIR Filter   *
+*   mode (Figure 2) by writing the DSP56200's Configuration register.    *
+*   Since only 16 bit  results  are sent to each D/A Converter, the      *
+*   outputs are rounded to 16 bits by the DSP56200.                      * 
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*                           --------------                               *
+*                           |  1st  FIR  |                               *
+*               x1(n) ----->|   Filter   |-----> out1(n)                 *
+*                           |  (7 taps)  |                               *
+*                           --------------                               *
+*                                                                        *
+*                           --------------                               *
+*                           |  2nd  FIR  |                               *
+*               x2(n) ----->|   Filter   |-----> out2(n)                 *
+*                           |  (7 taps)  |                               *
+*                           --------------                               *
+*                                                                        *
+*                   Figure 2. DSP56200 Configuration                     *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*      ************************************************************      *
+*      *                                                          *      *
+*      *   This program originally available on the Motorola DSP  *      *
+*      *   bulletin board.  It is provided under a DISCLAMER OF   *      *
+*      *   WARRANTY available from  Motorola DSP Operation,       *      *
+*      *     6501 Wm. Cannon Drive W., Austin, Tx., 78735.        *      *
+*      *                                                          *      *
+*      ************************************************************      *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*      ************************************************************      *
+*      * Note on the Representation of Hex Numbers:               *      *
+*      *                                                          *      *
+*      *    In the programming language  "C",  hex numbers are    *      *
+*      *    represented by preceding the number with "0x". For    *      *
+*      *    example, e4 (hex) is represented in "C" as 0xe4.      *      *
+*      *                                                          *      *
+*      ************************************************************      *
+*                                                                        *
+\************************************************************************/
+
+
+
+        /*** CONSTANTS ***/
+
+#define   FOREVER     1         /* For infinite looping */
+
+
+
+#define   X1_HI     0x0         /* Addresses (hex) of DSP56200 regs, bank 0 */
+#define   X1_LO     0x1
+#define   D_HI      0x2                     /* unused -Adaptive mode only */
+#define   D_LO      0x3                     /* unused -Adaptive mode only */
+#define   K_HI      0x4                     /* unused -Adaptive mode only */
+#define   K_LO      0x5                     /* unused -Adaptive mode only */
+#define   X2_HI     0x6
+#define   X2_LO     0x7
+#define   DATA_HI   0x8                     /* unused */
+#define   DATA_LO   0x9                     /* unused */
+#define   COEFF_HI  0xa
+#define   COEFF_MD  0xb
+#define   COEFF_LO  0xc
+#define   RAM_ADR   0xd
+#define   CONFIG    0xf
+
+#define   OUTPUT3   0x0              /* Most  significant byte of 1st result */
+#define   OUTPUT2   0x1              /* Least significant byte of 1st result */
+#define   OUTPUT1   0x2              /* Most  significant byte of 2nd result */
+#define   OUTPUT0   0x3              /* Least significant byte of 2nd result */
+#define   LTAP1_HI  0x4                     /* unused */
+#define   LTAP1_LO  0x5                     /* unused */
+#define   LTAP2_HI  0x6                     /* unused */
+#define   LTAP2_LO  0x7                     /* unused */
+
+#define   LEAKAGE   0x0         /* Addresses (hex) of DSP56200 regs, bank 1 */
+#define   FTL       0x1
+
+
+
+                                /* Values (hex) written to the DSP56200 regs */
+#define   CNFIG_0   0x50              /* Config reg: Selects bank 0 */
+#define   CNFIG_1   0x51              /* Config reg: Selects bank 1 */
+#define   FTL_VAL   0x06              /* Two filters, each with 7 taps */
+
+
+
+        /* GLOBAL VARIABLES */
+
+static int coeff[14][3] = {
+   { 0x08, 0x00, 0x00 },            /* 1st coeff of 1st filter (3 bytes) */
+   { 0x10, 0x00, 0x00 },            /* 2nd coeff ...                     */
+   { 0x18, 0x00, 0x00 },            /* 3rd coeff ...                     */
+   { 0x20, 0x00, 0x00 },            /* 4th coeff ...                     */
+   { 0x18, 0x00, 0x00 },            /* 5th coeff ...                     */
+   { 0x10, 0x00, 0x00 },            /* 6th coeff ...                     */
+   { 0x08, 0x00, 0x00 },            /* 7th coeff ...                     */
+   { 0x08, 0x00, 0x00 },            /* 1st coeff of 2nd filter (3 bytes) */
+   { 0x10, 0x00, 0x00 },            /* 2nd coeff ...                     */
+   { 0x18, 0x00, 0x00 },            /* 3rd coeff ...                     */
+   { 0x20, 0x00, 0x00 },            /* 4th coeff ...                     */
+   { 0x18, 0x00, 0x00 },            /* 5th coeff ...                     */
+   { 0x10, 0x00, 0x00 },            /* 6th coeff ...                     */
+   { 0x08, 0x00, 0x00 }             /* 7th coeff ...                     */
+};                           /*  This two-dimensional array holds the 14    */
+                             /*  coefficients required for the two FIR      */
+                             /*  filters (each coeff is three bytes long).  */
+                             /*  Note that the coeffs of the 1st filter     */
+                             /*  don't have to be the same as those of the  */
+                             /*  2nd filter, but in this case they are the  */
+                             /*  same. The coefficients would typically be  */
+                             /*  stored in a ROM in an actual setup.        */
+
+
+
+        /*** MAIN PROGRAM ***/
+
+main()   {
+
+        /********************************************************************\
+        *                                                                    *
+        *   This program is an example of the software used by a host        *
+        *   processor to service a DSP56200 configured in the Dual FIR       *
+        *   Filter mode.  Three functions are performed:                     *
+        *                                                                    *
+        *         1. Initialize User's System and Configure the DSP56200.    *
+        *         2. Initialize the Coeff and Data RAMs of the DSP56200.     *
+        *         3. Run the Dual FIR Filters in a real-time environment.    *
+        *                                                                    *
+        *   Things to watch for when setting up the filtering system:        *
+        *                                                                    *
+        *         - There must be NO GLITCHES on the DSP56200's START pin.   *
+        *         - If codecs are used for the A/D or D/A conversion, see    *
+        *              comments in the routines "send_da()"and "get_ad()".   *
+        *         - If offset binary A/Ds or D/As are used, see comments     *
+        *              in the subroutines "send_da()" and "get_ad()".        *
+        *         - Coefficients must be correctly selected so that there    *
+        *              is no overflow (see box below).                       *
+        *                                                                    *
+        *      ********************************************************      *
+        *      * Preventing Overflow:                                 *      *
+        *      *                                                      *      *
+        *      *    All FIR filters are subject to overflow, and it   *      *
+        *      *    is important that the filter coefficients are     *      *
+        *      *    carefully selected to prevent overflow.  For the  *      *
+        *      *    DSP56200, overflow occurs when the right side of  *      *
+        *      *    equation (1) has a magnitude greater than 1.0:    *      *
+        *      *                                                      *      *
+        *      *                    N-1                               *      *
+        *      *                    __                                *      *
+        *      *                    \                                 *      *
+        *      *          y(n)  =   /_   h(i) * x(n-i)        (1)     *      *
+        *      *                   i = 0                              *      *
+        *      *                                                      *      *
+        *      *    N represents the number of filter taps (N = 7     *      *
+        *      *    in this program), and h(i) represents the "ith"   *      *
+        *      *    filter coefficient.  Both h(i) and x(n-i) are     *      *
+        *      *    signed, fractional numbers  in the DSP56200's     *      *
+        *      *    data format.                                      *      *
+        *      *                                                      *      *
+        *      *    If there is a possibility of overflow with a set  *      *
+        *      *    of filter coefficients, then all coefficients     *      *
+        *      *    must be scaled by a constant.  The DSP56200's     *      *
+        *      *    24 bit coefficients allow plenty of room for      *      *
+        *      *    scaling. If 12 bit input data samples are used in *      *
+        *      *    a system, the potential for overflow is greatly   *      *
+        *      *    reduced if the samples are sign-extended by four  *      *
+        *      *    bits before sending them to the DSP56200.         *      *
+        *      *                                                      *      *
+        *      ********************************************************      *
+        *                                                                    *
+        *                                                                    *
+        *   Note: The program assumes that the variable type "int" is at     *
+        *         least 16 bits wide.                                        *
+        *                                                                    *
+        \********************************************************************/
+
+
+
+        /* Program Declarations */
+
+           int tap;               /* filter tap number, used to load coeffs */
+
+
+
+        /* Initialize System */
+
+           /*   Here the user first initializes any other components of     */
+           /*   the filtering system which require initialization.  The     */
+           /*   DSP56200 is then initialized using the program code below.  */
+
+
+
+        /* Reset and Configure the DSP56200 */
+
+           wait_for_start();               /* This is done to synchronize   */
+                                           /* the program up to the system. */
+                                           /* Ensures that no writes occur  */
+                                           /* when the DSP56200's START pin */
+                                           /* receives a rising edge.       */
+
+           wrbyte(CNFIG_1, CONFIG);        /* Configuration:                */
+                                           /*    - Dual FIR Filters         */
+                                           /*    - Not Cascaded             */
+                                           /*    - 16 Bit Rounding          */
+                                           /*    - DC Tap Disabled          */
+                                           /*    - Register Bank 1 Selected */
+           wrbyte(FTL_VAL, FTL);           /* Writing this reg also resets   */
+                                           /*    the chip at the beginning   */
+                                           /*    of the next sample period,  */
+                                           /*    which destroys any previous */
+                                           /*    contents of the Data RAM.   */
+
+           wrbyte(CNFIG_0, CONFIG);        /* Switch to register bank 0 */
+
+
+
+        /* Initialize the DSP56200's Coefficient and Data RAMS */
+
+              wrbyte(0, X1_HI);       /* clears Data RAM when loading coeffs */
+              wrbyte(0, X1_LO);
+
+              /* Presently for initialization, there are eleven writes   */
+              /* which the host processor must  perform in one sample    */
+              /* period.  If all these writes cannot be performed in one */
+              /* sample period, a call to the routine "wait_for_start()" */
+              /* can be inserted here,  and will reduce the number of    */
+              /* writes down to a maximum of six in one sample period.   */
+
+              wrbyte(0, X2_HI);
+              wrbyte(0, X2_LO);
+
+              wrbyte(coeff[0][0], COEFF_HI);         /* 1st coeff of 1st FIR */
+              wrbyte(coeff[0][1], COEFF_MD);
+              wrbyte(coeff[0][2], COEFF_LO);
+
+              wrbyte(0, RAM_ADR);            /* autoincrements w/ each START */
+
+              for (tap=1; tap<=(1 + 2*FTL_VAL); tap=tap+1)   {
+
+                 wait_for_start();
+
+                 wrbyte(coeff[tap][0], COEFF_HI);
+                 wrbyte(coeff[tap][1], COEFF_MD);
+                 wrbyte(coeff[tap][2], COEFF_LO);
+                                     /*  Note that the Data RAM is cleared   */
+                                     /*  since the DSP56200's X1 and X2 regs */
+                                     /*  are set to "0", resulting in "0"s   */
+                                     /*  being "shifted" into the filter's   */
+                                     /*  Data RAM (delay line) every sample  */
+                                     /*  period.                             */
+              }
+
+
+
+        /* Run the Filters in Real-time */
+
+              prealtime();
+}
+
+
+
+        /*** SUBROUTINES ***/
+
+
+
+        /* PREALTIME */
+
+prealtime()
+{
+        /****************************************************************\
+        *                                                                *
+        *   This routine performs the I/O servicing required when the    *
+        *   DSP56200 is processing real-time samples.  Every sample      *
+        *   period (signified by the reception of a rising edge on the   *
+        *   DSP56200's START pin), the host processor sends two new      *
+        *   samples to the DSP56200, and reads out two results from      *
+        *   the DSP56200.                                                *
+        *                                                                *
+        *   This routine is used only in polled I/O systems.             *
+        *                                                                *
+        *   Note: The routine assumes that the variable type "int" is    *
+        *         at least 16 bits wide.                                 *
+        *                                                                *
+        *   Also: It is important that execution of the code inside the  *
+        *         while loop completes before the next sample period     *
+        *         begins.  This guarantees that the start of the next    *
+        *         sample period is never missed because the program will *
+        *         then be in the subroutine "wait_for_start()", polling  *
+        *         for the rising edge of the START signal.               *
+        *                                                                *
+        \****************************************************************/
+
+
+
+        /* Subroutine Declarations */
+           int x1, x2, out;                       /* see Figure 2 */
+
+
+
+        while (FOREVER)   {                       /* infinite loop */
+
+           /* Poll for Reception of the START signal */
+              wait_for_start();
+
+           /* Host Now Services the DSP56200 Since START Has Been Received */
+           
+              /* Read the New Samples from the A/Ds and Write to the DSP56200 */
+
+                 x1 = get_ad(1);
+                 x2 = get_ad(2);
+
+                 wrbyte((x1>>8) & 0x0ff, X1_HI);      /* writes upper byte */
+                 wrbyte( x1     & 0x0ff, X1_LO);      /* writes lower byte */
+                 wrbyte((x2>>8) & 0x0ff, X2_HI);      /* writes upper byte */
+                 wrbyte( x2     & 0x0ff, X2_LO);      /* writes lower byte */
+
+              /* Read the Results from the 56200 and Write to the D/As */
+   
+                 out = rdbyte(OUTPUT3);
+                 out = out << 8;                      /* move to upper byte */
+                 out = out + (0x0ff & rdbyte(OUTPUT2));
+                 send_da(out,1);
+
+                 out = rdbyte(OUTPUT1);
+                 out = out << 8;                      /* move to upper byte */
+                 out = out + (0x0ff & rdbyte(OUTPUT0));
+                 send_da(out,2);
+        }
+}
+
+
+
+        /* WRBYTE */
+
+wrbyte(val,adr)
+int val, adr;
+{
+        /**************************************************************\
+        *                                                              *
+        *   This subroutine writes one byte to the DSP56200 register   *
+        *   specified by "adr".                                        *
+        *   Note that the correct register bank has already been       *
+        *   selected (defined by the LSB of the Configuration reg).    *
+        *                                                              *
+        *   This subroutine could be defined as a macro for faster     *
+        *   execution.                                                 *
+        *                                                              *
+        *   Inputs:                                                    *
+        *      val  = bytewide value to be written to the DSP56200     *
+        *      adr  = address of the DSP56200 register to be written   *
+        *                                                              *
+        \**************************************************************/
+
+        /* Actual program code depends on the user's system. */
+}
+
+
+
+        /* RDBYTE */
+
+rdbyte(adr)
+int adr;
+{
+        /**************************************************************\
+        *                                                              *
+        *  This subroutine reads one byte from the DSP56200 register   *
+        *  specified by "adr".                                         *
+        *  Note that the correct register bank has already been        *
+        *  selected (defined by the LSB of the Configuration reg).     *
+        *                                                              *
+        *  This subroutine could be defined as a macro for faster      *
+        *   execution.                                                 *
+        *                                                              *
+        *   Inputs:                                                    *
+        *      adr  = address of the DSP56200 register to be read      *
+        *                                                              *
+        *   Outputs:                                                   *
+        *      The routine returns the byte read from the DSP56200     *
+        *                                                              *
+        \**************************************************************/
+
+        int valread;
+
+        /* Actual program code depends on the user's system. */
+
+        return(valread);
+}
+
+
+
+        /* GET_AD */
+
+get_ad(devnum)
+int devnum;
+{
+        /******************************************************************\
+        *                                                                  *
+        *   This subroutine returns a 16 bit value read from one of the    *
+        *   two A/D converters in the filtering system.                    *
+        *                                                                  *
+        *   Inputs:                                                        *
+        *      devnum = A/D Converter number:  1=1st FIR, 2=2nd FIR.       *
+        *                                                                  *
+        *   Outputs:                                                       *
+        *      The routine returns the value read from the selected A/D.   *
+        *                                                                  *
+        \******************************************************************/
+
+        int ad_val;
+
+        /* Actual program code depends on the user's system. */
+
+        /*  If a codec is used for A/D conversion, the 8 bit companded  */
+        /*  sample must be converted into a 12 bit linear quantity and  */
+        /*  then sign extended to 16 bits.                              */
+
+        /*  If the converter uses an offset binary format, it may be  */
+        /*  necessary to invert the sign bit (and any sign extension  */
+        /*  bits) to obtain a 2's complement number.                  */
+
+        return(ad_val);
+}
+
+
+
+        /* SEND_DA */
+
+send_da(val,devnum)
+int val, devnum;
+{
+        /**************************************************************\
+        *                                                              *
+        *   This subroutine sends a value to a D/A converter where it  *
+        *   gets converted to an analog signal.                        *
+        *                                                              *
+        *   Inputs:                                                    *
+        *      val = value to be sent to the selected D/A converter    *
+        *      devnum = D/A Converter number:  1=1st FIR, 2=2nd FIR.   *
+        *                                                              *
+        \**************************************************************/
+
+        /* Actual program code depends on the user's system. */
+
+        /*  If a codec is used for D/A conversion, the 16 bit linear   */
+        /*  sample must be converted into a 8 bit companded quantity.  */
+
+        /*  If the converter uses an offset binary format, it may be  */
+        /*  necessary to invert the sign bit (and any sign extension  */
+        /*  bits) to obtain a number in offset binary format.         */
+}
+
+
+
+        /* WAIT_FOR_START */
+
+wait_for_start()
+{
+        /********************************************************************\
+        *                                                                    *
+        *   This routine polls a general purpose input pin for a "1",        *
+        *   which indicates that a rising edge has arrived at the START pin  *
+        *   of the DSP56200 and that new samples are ready to be processed.  *
+        *                                                                    *
+        *   Note: It may be necessary to verify that the START signal has    *
+        *         returned to a "0" before polling for a "1".                *
+        *                                                                    *
+        *   Note: It is important that the program has completed other       *
+        *         processing and is waiting in this loop when the START      *
+        *         signal arrives so that no samples are lost.                *
+        *                                                                    *
+        \********************************************************************/
+
+        int pin;
+
+        pin = get_pin();
+
+        while (pin == 0);                /* loops until "1" found on pin */
+           pin = get_pin();
+}
+
+
+
+        /* GET_PIN */
+
+get_pin()
+{
+        /*****************************************************************\
+        *                                                                 *
+        *   Returns the value read (0 or 1) from a general purpose input  *
+        *   pin which is tied directly to the DSP56200's START pin.       *
+        *                                                                 *
+        \*****************************************************************/
+        
+        /* Actual program code depends on the user's system. */
+}
+

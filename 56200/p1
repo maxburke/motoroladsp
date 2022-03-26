@@ -1,0 +1,168 @@
+
+
+
+                *********************************
+                **  DSP56200 SUPPORT SOFTWARE  **
+                *********************************
+
+
+     GENERAL DESCRIPTION:
+
+
+          The DSP56200 is a DSP peripheral, designed for FIR
+     and  LMS Adaptive filtering.  The DSP56200 is described
+     in Motorola  Technical  Summary,  BR283,  and  Motorola
+     Advance Information, DSP56200/D.
+
+          Since the DSP56200 is a  peripheral,  it  must  be
+     interfaced  to  a  host  processor.  The host processor
+     must run a device driver program which initializes  the
+     DSP56200  and  provides  real  time input/output to the
+     DSP56200.  Each example reflects the usage of the  chip 
+     in a  certain  mode and  environment. The  programs are 
+     provided as tools  and  will need to be modified by the
+     design engineer to fit into an actual application.
+
+          The device drivers are written in the  programming
+     language  "C",  and  all have been tested and verified.
+     Although written in "C", the  programs  are  well  com-
+     mented  and  written in a style which should make sense
+     to users familiar  with  other  high  level  languages.
+     Comments  are included which point out helpful program-
+     ming tricks, and each program is flowcharted. For users
+     uncomfortable with "C", a helpful appendix is  included
+     at the end of this document.
+
+
+     PROGRAMMING THE HOST PROCESSOR:
+
+
+          The four device driver examples  described  herein
+     can  be classified according to the DSP56200's mode and
+     environment as follows:
+
+        (p2) Interrupt Driven Adaptive Filter   -Flowchart
+        (p3) Interrupt Driven Adaptive Filter   -"C" Code
+        (p4) Polled I/O Adaptive Filter         -Flowchart
+        (p5) Polled I/O Adaptive Filter         -"C" Code
+        (p6) Interrupt Driven Dual FIR Filter   -Flowchart
+        (p7) Interrupt Driven Dual FIR Filter   -"C" Code
+        (p8) Polled I/O Dual FIR Filter         -Flowchart
+        (p9) Polled I/O Dual FIR Filter         -"C" Code
+
+     In the interrupt driven environment, the host processor
+     is  interrupted every time the DSP56200 receives a ris-
+     ing edge on its START pin.  In the polled I/O  environ-
+     ment,  the  host  processor  polls  a  pin  tied to the
+     DSP56200's START pin.  The programs are complete except
+     for  the  lowest  level routines, which perform the I/O
+     for  the  host  processor  and  are  system  dependent.
+     Typically,  a user would select the correct program for
+     an application  and  translate  it  into  the  assembly
+     language  of the host processor, filling in the details
+     such as the I/O routines  and  other  system  dependent
+     code.
+
+
+
+===========================================================================
+
+
+
+     APPENDIX 1 - READING PROGRAMS WRITTEN IN "C":
+
+
+
+        1. Commenting in "C":
+
+           Comments are defined as any text between "/*" and "*/".
+           Below are some examples of comments:
+
+                 /************************\
+                 |* Example of a comment *|
+                 \************************/
+
+                 /* Example of a comment */
+
+                 /* Example of
+                    a comment */
+
+
+
+        2. Constants in "C":
+
+           Constants are always defined at the top of the file, and are
+           defined as follows:
+
+              #define NAME_OF_CONSTANT value_of_constant
+
+           Typically, constants have all capital letters, and hex constants
+           are preceded with the characters "0x".  Below are 2 examples:
+
+                 #define DEC_CONST 14      /* Example of a decimal constant */
+                 #define HEX_CONST 0xe     /* Example of a hex constant */
+
+
+
+        3. Looping in "C":
+
+           The "for" loop in "C" is equivalent to the following flow chart:
+
+                 for (tap=1; tap<=maxval; tap=tap+1)   {
+                    /* statements in loop */
+                 }
+
+           Equivalent Flow Chart:
+
+                                  |              
+                                  |              
+                            ------------
+                            |  tap = 1  |
+                            ------------
+                                  |              
+                    ------------->+
+                   |              |              
+                   |        -------------   
+                   |      / tap <= maxval \______________
+                   |      \       ?       / No           |
+                   |        -------------                |
+                   |              | Yes                  |
+                   |              |                      |
+                   |     ----------------------          |
+                   |     | Statements in Loop |          |
+                   |     ----------------------          |
+                   |              |                      |
+                   |              |                      |
+                   |       ---------------               |
+                   |       | tap = tap+1 |               |
+                   |       ---------------               |
+                   |              |                      |
+                   |              |                      |
+                    --------------                       |
+                                                         |
+                                                         |
+                                   ----------------------
+                                  |
+                                  V
+
+
+
+        4. Logical Operations in "C":
+
+           "C" has operators which perform logical operations:
+
+              SYMBOL   LOGICAL OPERATION
+              ------   -----------------
+                &         AND
+                >>        Right Shift
+                <<        Left Shift
+
+           Examples:
+           --------
+              "0xabcd & 0x00ff" results in 0x00cd.  Grabs lower byte.
+              "0x1234 >> 8" results in 0x0012.  Shifts off lower byte.
+              "0xefab << 8" results in 0xab00.  Moves lower byte to upper byte.
+              "(0xefab << 8) + 0x00cd" results in 0xabcd.  This is one method
+                 for combining two bytes into one 16-bit integer.
+
+

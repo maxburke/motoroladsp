@@ -1,0 +1,170 @@
+
+
+         /***********************************************\
+         |**                                           **|
+         |**   DSP56200 CHIP DRIVER -DUAL FIR FILTERS  **|
+         |**                        -INTERRUPT DRIVEN  **|
+         |**                                           **|
+         \***********************************************/
+
+/************************************************************************\
+*                                                                        *
+* VERSION        CHANGE                                                  *
+* -------        ------                                                  *
+*   1.1      In the flowchart for the interrupt service routine, when    *
+*            passnum = 1, the decision box "tap = FTL?" has been changed *
+*            to "tap = (1+2*FTL)?".                                      *
+*                                                                        *
+\************************************************************************/
+
+
+/************************************************************************\
+*                                                                        *
+*   This file contains a flowchart of the host processor program used    *
+*   to setup and service a single DSP56200 as two real-time FIR filters. *
+*   In this example, the host processor is interrupted at the beginning  *
+*   of every new sample period, signified by the reception of a rising   *
+*   edge on the DSP56200's START pin.  The host processor's interrupt    *
+*   pin is tied to the START pin of the DSP56200 through an inverter.    *
+*                                                                        *
+*   The example system is configured as shown below:                     *
+*                                                                        *
+*                            ------------                                *
+*                            | DSP56200 |                                *
+*                            ------------                                *
+*                                  ^                                     *
+*                                  |                                     *
+*                                  v                                     *
+*               -------    ------------------    -------                 *
+*      x1(t) -->| A/D |--->| Host Processor |--->| D/A |--> out1(t)      *
+*               -------    |                |    -------                 *
+*                          | (contains code |                            *
+*               -------    |  found in this |    -------                 *
+*      x2(t) -->| A/D |--->|     file)      |--->| D/A |--> out2(t)      *
+*               -------    ------------------    -------                 *
+*                                                                        *
+*                                                                        *
+*                   Figure 1. Dual FIR Filtering System                  *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*   There is only one DSP56200 in this example (i.e., not multiple       *
+*   DSP56200s in cascade), and it is configured in the Dual FIR filter   *
+*   mode (Figure 2) by writing the DSP56200's Configuration register.    *
+*   Since only 16 bit  results  are sent to each D/A Converter, the      *
+*   outputs are rounded to 16 bits by the DSP56200.                      * 
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*                                                                        *
+*                           --------------                               *
+*                           |  1st  FIR  |                               *
+*               x1(n) ----->|   Filter   |-----> out1(n)                 *
+*                           |  (7 taps)  |                               *
+*                           --------------                               *
+*                                                                        *
+*                           --------------                               *
+*                           |  2nd  FIR  |                               *
+*               x2(n) ----->|   Filter   |-----> out2(n)                 *
+*                           |  (7 taps)  |                               *
+*                           --------------                               *
+*                                                                        *
+*                                                                        *
+*                   Figure 2. DSP56200 Configuration                     *
+*                                                                        *
+*                                                                        *
+\************************************************************************/
+
+
+
+Flowchart #3: Dual FIR Filter Mode, Single Chip - Interrupt Driven
+
+   Main Program:
+
+
+
+                             -----------
+                             |  Begin  |
+                             -----------
+                                  |
+                     -----------------------------
+                     |  Disable START Interrupt  |
+                     -----------------------------
+                                  |
+                     -----------------------------
+                     | Set-up Global Variables:  |
+                     |       passnum = 2         |
+                     |       tap     = 0         |
+                     -----------------------------
+                                  |
+                      ----------------------------
+                      |  Enable START Interrupt  |
+                      ----------------------------
+                                  |
+               -----------------------------------------
+               | Perform Other Tasks or Idle:          |
+               |    At this time, the host can perform |
+               |    some other task.  Upon receiving   |
+               |    a START interrupt, the interrupt   |
+               |    service routine is then called.    |
+               -----------------------------------------
+
+
+
+   Interrupt Service Routine:
+
+
+
+        -----------
+        |  Begin  |
+        -----------
+             |
+---------------------------
+|  Save Processor Status  |
+---------------------------
+             |
+      --------------            --------------           
+    /  passnum = 2 ? \________/  passnum = 1 ? \_________________ 
+    \                / No     \                / No              |
+      --------------            --------------                   |
+             | Yes                     | Yes                     |
+  -------------------------      ---------------       ---------------------
+  | Write Bank 1 Regs:    |      | tap = tap+1 |       | Get 2 New Samples |
+  |    CONFIG  = 51 (hex) |      ---------------       |   From the A/Ds   |
+  |    FTL     = 06 (hex) |            |               ---------------------
+  -------------------------   --------------------               |
+             |                |      Write       |   -------------------------
+             |                | COEFF = ROM[tap] |   | Write the New Samples |
+  ------------------------    --------------------   | to the X1 and X2 Regs |
+  | Switch to Bank 0:    |             |             -------------------------
+  |    CONFIG = 50 (hex) |         ---------                     |
+  ------------------------       /   tap =   \____    ------------------------
+             |                   \ (1+2*FTL)?/ No |   |   Read Two Results   |
+   -----------------------         ---------      |   | from the OUTPUT Reg. |
+   | Write Bank 0 Regs:  |             | Yes      |   ------------------------
+   |    X1     = 0       |      ----------------  |              |
+   |    X2     = 0       |      | passnum =    |  |     --------------------
+   |    COEFF  = ROM[0]  |      |    passnum-1 |  |     | Send the Results |
+   |    RAMADR = 0       |      ----------------  |     |    to the D/As   |
+   -----------------------             |          |     --------------------
+             |                         |          |              |
+     ----------------                  |          |              |
+     | passnum =    |                  +<---------               |
+     |    passnum-1 |                  |                         |
+     ----------------                  |                         |
+             |                         |                         |
+             |                         |                         |
+              ------------------------>+<------------------------
+                                       |
+                                       |
+                         ------------------------------
+                         |  Restore Processor Status  |
+                         ------------------------------
+                                       |
+                         ------------------------------
+                         |  Return to Calling Program |
+                         ------------------------------
+
+
+
+
